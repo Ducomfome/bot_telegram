@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { X, Copy, CheckCircle, Loader2 } from 'lucide-react';
 import { PixPaymentData, Plan } from '../types';

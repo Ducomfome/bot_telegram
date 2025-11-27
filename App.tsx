@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatHeader } from './components/ChatHeader';
 import { MessageBubble } from './components/MessageBubble';
@@ -41,7 +42,7 @@ export default function App() {
           handlePaymentSuccess();
           if (pollingRef.current) clearInterval(pollingRef.current);
         }
-      }, 5000);
+      }, 5000); // Check every 5 seconds
     } else {
       if (pollingRef.current) clearInterval(pollingRef.current);
     }

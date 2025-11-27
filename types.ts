@@ -1,3 +1,4 @@
+
 export type MessageType = 'text' | 'image' | 'video';
 
 export interface Message {
