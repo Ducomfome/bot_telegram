@@ -16,8 +16,8 @@ export interface Plan {
 }
 
 export interface PixPaymentData {
-  qrCodeBase64: string; // Used for raw base64 images
-  copyPasteCode: string; // The raw Pix code string
+  qrCodeBase64: string;
+  copyPasteCode: string;
   transactionId: string;
 }
 

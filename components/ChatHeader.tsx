@@ -4,7 +4,7 @@ import { MEDIA_URLS } from '../constants';
 
 export const ChatHeader: React.FC = () => {
   return (
-    <div className="flex items-center justify-between bg-[#242f3d] text-white p-2 shadow-md sticky top-0 z-10">
+    <div className="flex items-center justify-between bg-[#242f3d] text-white p-2 shadow-md sticky top-0 z-20 h-14">
       <div className="flex items-center gap-4">
         <ArrowLeft className="w-6 h-6 text-gray-300 cursor-pointer" />
         <div className="flex items-center gap-3">

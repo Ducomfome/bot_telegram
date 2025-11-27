@@ -1,15 +1,14 @@
 import { Plan } from './types';
 
-// Environment Variables (Vite/Create React App compatible)
-// Note: In a real production app, secrets should be proxied via a backend.
+// Environment Variables with User Provided Defaults
 export const SYNC_PAY_CONFIG = {
   BASE_URL: (import.meta as any).env?.VITE_SYNC_PAY_BASE_URL || 'https://api.syncpayments.com.br',
-  CLIENT_ID: (import.meta as any).env?.VITE_SYNC_PAY_CLIENT_ID || '', 
-  CLIENT_SECRET: (import.meta as any).env?.VITE_SYNC_PAY_CLIENT_SECRET || '',
+  CLIENT_ID: (import.meta as any).env?.VITE_SYNC_PAY_CLIENT_ID || '2d2a82c3-df34-4840-bcf7-b283d9076977', 
+  CLIENT_SECRET: (import.meta as any).env?.VITE_SYNC_PAY_CLIENT_SECRET || 'b7310f94-6f9c-48ac-a2f3-acca29fd4609',
   WEBHOOK_URL: (import.meta as any).env?.VITE_WEBHOOK_URL || 'https://bot-telegram-gamma-lovat.vercel.app'
 };
 
-// Media URLs provided
+// Media URLs
 export const MEDIA_URLS = {
   IMG_1: 'https://pub-9ad786fb39ec4b43b2905a55edcb38d9.r2.dev/img01_bot.jpg',
   VIDEO_1: 'https://pub-9ad786fb39ec4b43b2905a55edcb38d9.r2.dev/video01_bot.mp4',
@@ -40,4 +39,4 @@ export const PLANS: Plan[] = [
   { id: 'underworld', name: 'SubMundo 😈 + 15 grupos', price: 23.10, label: 'SubMundo 😈 + 15 grupos 🎁 - por R$ 23,10' },
 ];
 
-export const SUCCESS_LINK = "https://t.me/+ExampleSecretLink"; // Placeholder for the final link
+export const SUCCESS_LINK = "https://t.me/+ExampleSecretLink";

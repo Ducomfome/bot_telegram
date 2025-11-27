@@ -15,7 +15,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
           isBot ? 'bg-[#182533] rounded-tl-none' : 'bg-[#2b5278] rounded-tr-none'
         }`}
       >
-        {/* Content */}
         <div className="text-white text-[15px] leading-snug">
           {message.type === 'image' && (
             <img 
@@ -45,7 +44,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
           )}
         </div>
 
-        {/* Timestamp */}
         <div className={`text-[11px] px-2 pb-1 text-right w-full ${isBot ? 'text-[#6e7f8d]' : 'text-[#7aa6cc]'}`}>
            {message.timestamp}
         </div>

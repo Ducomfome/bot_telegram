@@ -19,7 +19,6 @@ export default function App() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<any>(null);
 
-  // Auto scroll to bottom
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -28,14 +27,12 @@ export default function App() {
     scrollToBottom();
   }, [messages, buttonsVisible]);
 
-  // Cleanup polling on unmount
   useEffect(() => {
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
   }, []);
 
-  // Polling for Payment Status
   useEffect(() => {
     if (paymentStatus === 'pending' && pixData?.transactionId) {
       pollingRef.current = setInterval(async () => {
@@ -44,34 +41,28 @@ export default function App() {
           handlePaymentSuccess();
           if (pollingRef.current) clearInterval(pollingRef.current);
         }
-      }, 5000); // Check every 5 seconds
+      }, 5000);
     } else {
       if (pollingRef.current) clearInterval(pollingRef.current);
     }
   }, [paymentStatus, pixData]);
 
-  // Initial Message Sequence
   useEffect(() => {
     const runSequence = async () => {
       const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-      // Delay 1: Image 1
       await new Promise(r => setTimeout(r, 800));
       setMessages(prev => [...prev, { id: '1', type: 'image', content: MEDIA_URLS.IMG_1, sender: 'bot', timestamp: now() }]);
 
-      // Delay 2: Video
       await new Promise(r => setTimeout(r, 1200));
       setMessages(prev => [...prev, { id: '2', type: 'video', content: MEDIA_URLS.VIDEO_1, sender: 'bot', timestamp: now() }]);
 
-      // Delay 3: Image 2
       await new Promise(r => setTimeout(r, 1200));
       setMessages(prev => [...prev, { id: '3', type: 'image', content: MEDIA_URLS.IMG_2, sender: 'bot', timestamp: now() }]);
 
-      // Delay 4: Sales Copy
       await new Promise(r => setTimeout(r, 1000));
       setMessages(prev => [...prev, { id: '4', type: 'text', content: SALES_COPY, sender: 'bot', timestamp: now() }]);
 
-      // Delay 5: Show Buttons
       await new Promise(r => setTimeout(r, 600));
       setButtonsVisible(true);
     };
@@ -84,7 +75,6 @@ export default function App() {
     setPaymentStatus('loading');
     
     try {
-      // Simulate API Call to Sync Pay
       const data = await createPixTransaction(plan.price, plan.name);
       setPixData(data);
       setPaymentStatus('pending');
@@ -103,7 +93,6 @@ export default function App() {
 
     if (pollingRef.current) clearInterval(pollingRef.current);
 
-    // Add success message
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setMessages(prev => [...prev, {
       id: 'success',
@@ -115,16 +104,14 @@ export default function App() {
   };
 
   return (
-    <div className="bg-[#0e1621] w-full h-full flex flex-col relative max-w-md mx-auto shadow-xl border-x border-[#131a21] overflow-hidden">
+    <div className="w-full h-full flex flex-col relative max-w-md mx-auto shadow-xl border-x border-[#131a21] overflow-hidden bg-[#0e1621]">
       <ChatHeader />
 
-      {/* Chat Area */}
-      <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-2 pb-32 z-0 relative scrollbar-hide">
+      <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-2 pb-32 z-0 relative scrollbar-hide bg-[#0e1621]">
         {messages.map((msg) => (
           <MessageBubble key={msg.id} message={msg} />
         ))}
         
-        {/* Access Button if Granted */}
         {isAccessGranted && (
           <div className="flex justify-center my-4 animate-bounce">
             <a 
@@ -141,7 +128,6 @@ export default function App() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Sticky Action Buttons */}
       {buttonsVisible && !isAccessGranted && (
         <div className="sticky bottom-0 bg-[#212d3b]/95 backdrop-blur-sm p-3 border-t border-[#131a21] z-10 animate-slide-up pb-6">
           <div className="flex flex-col gap-2">
@@ -170,7 +156,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Payment Modal */}
       {paymentStatus === 'pending' && selectedPlan && (
         <PaymentModal 
           plan={selectedPlan}

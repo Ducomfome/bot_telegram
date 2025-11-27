@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { X, Copy, CheckCircle, Loader2 } from 'lucide-react';
 import { PixPaymentData, Plan } from '../types';
-import QRCode from 'react-qr-code'; // We will use a library or just SVG for rendering
+import QRCode from 'react-qr-code';
 
 interface PaymentModalProps {
   plan: Plan;
   pixData: PixPaymentData | null;
   onClose: () => void;
-  onSuccess: () => void; // Trigger manually for demo
+  onSuccess: () => void;
 }
 
 export const PaymentModal: React.FC<PaymentModalProps> = ({ plan, pixData, onClose, onSuccess }) => {
@@ -27,7 +27,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ plan, pixData, onClo
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/80 backdrop-blur-sm animate-fade-in">
       <div className="bg-[#1c2732] w-full max-w-md rounded-xl border border-[#2b5278] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         
-        {/* Header */}
         <div className="bg-[#232e3c] p-4 flex justify-between items-center border-b border-[#131a21]">
           <h3 className="text-white font-semibold text-lg">Pagamento via Pix</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-white">
@@ -35,7 +34,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ plan, pixData, onClo
           </button>
         </div>
 
-        {/* Body */}
         <div className="p-6 flex flex-col items-center overflow-y-auto">
           <div className="text-center mb-4">
             <p className="text-gray-300 text-sm">Você está adquirindo:</p>
@@ -79,7 +77,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ plan, pixData, onClo
             </p>
           </div>
           
-          {/* Simulation Button */}
           <button 
             onClick={onSuccess}
             className="mt-6 w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors text-sm uppercase tracking-wide"
