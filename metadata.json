@@ -1,0 +1,5 @@
+{
+  "name": "bot_telegram",
+  "description": "A simulated Telegram chat interface for digital product access with Pix payment integration.",
+  "requestFramePermissions": []
+}
