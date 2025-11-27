@@ -1,5 +1,14 @@
 import { Plan } from './types';
 
+// Environment Variables (Vite/Create React App compatible)
+// Note: In a real production app, secrets should be proxied via a backend.
+export const SYNC_PAY_CONFIG = {
+  BASE_URL: (import.meta as any).env?.VITE_SYNC_PAY_BASE_URL || 'https://api.syncpayments.com.br',
+  CLIENT_ID: (import.meta as any).env?.VITE_SYNC_PAY_CLIENT_ID || '', 
+  CLIENT_SECRET: (import.meta as any).env?.VITE_SYNC_PAY_CLIENT_SECRET || '',
+  WEBHOOK_URL: (import.meta as any).env?.VITE_WEBHOOK_URL || 'https://bot-telegram-gamma-lovat.vercel.app'
+};
+
 // Media URLs provided
 export const MEDIA_URLS = {
   IMG_1: 'https://pub-9ad786fb39ec4b43b2905a55edcb38d9.r2.dev/img01_bot.jpg',

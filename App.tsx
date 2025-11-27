@@ -4,7 +4,7 @@ import { MessageBubble } from './components/MessageBubble';
 import { PaymentModal } from './components/PaymentModal';
 import { Message, Plan, PixPaymentData, PaymentStatus } from './types';
 import { MEDIA_URLS, SALES_COPY, PLANS, SUCCESS_LINK } from './constants';
-import { createPixTransaction } from './services/paymentService';
+import { createPixTransaction, checkPaymentStatus } from './services/paymentService';
 import { Lock, Zap, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export default function App() {
@@ -17,6 +17,7 @@ export default function App() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const pollingRef = useRef<any>(null);
 
   // Auto scroll to bottom
   const scrollToBottom = () => {
@@ -26,6 +27,28 @@ export default function App() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, buttonsVisible]);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
+
+  // Polling for Payment Status
+  useEffect(() => {
+    if (paymentStatus === 'pending' && pixData?.transactionId) {
+      pollingRef.current = setInterval(async () => {
+        const paid = await checkPaymentStatus(pixData.transactionId);
+        if (paid) {
+          handlePaymentSuccess();
+          if (pollingRef.current) clearInterval(pollingRef.current);
+        }
+      }, 5000); // Check every 5 seconds
+    } else {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    }
+  }, [paymentStatus, pixData]);
 
   // Initial Message Sequence
   useEffect(() => {
@@ -78,6 +101,8 @@ export default function App() {
     setSelectedPlan(null);
     setIsAccessGranted(true);
 
+    if (pollingRef.current) clearInterval(pollingRef.current);
+
     // Add success message
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setMessages(prev => [...prev, {
@@ -90,10 +115,8 @@ export default function App() {
   };
 
   return (
-    <div className="bg-[#0e1621] h-[100dvh] flex flex-col relative max-w-md mx-auto shadow-xl border-x border-[#131a21] overflow-hidden">
+    <div className="bg-[#0e1621] w-full h-full flex flex-col relative max-w-md mx-auto shadow-xl border-x border-[#131a21] overflow-hidden">
       <ChatHeader />
-
-      {/* Background set to solid color by container class, pattern removed */}
 
       {/* Chat Area */}
       <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-2 pb-32 z-0 relative scrollbar-hide">
@@ -156,6 +179,7 @@ export default function App() {
             setPaymentStatus('idle');
             setPixData(null);
             setSelectedPlan(null);
+            if (pollingRef.current) clearInterval(pollingRef.current);
           }}
           onSuccess={handlePaymentSuccess}
         />
