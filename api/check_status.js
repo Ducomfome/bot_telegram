@@ -24,20 +24,26 @@ export default async function handler(req, res) {
   const baseUrl = process.env.VITE_SYNC_PAY_BASE_URL || 'https://api.syncpayments.com.br';
 
   try {
-    // 1. Autenticação
+    // 1. Autenticação - CORRIGIDO
     const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
     
+    const params = new URLSearchParams();
+    params.append('grant_type', 'client_credentials');
+
     const authResponse = await fetch(`${baseUrl}/oauth/token`, {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${credentials}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Content-Type': 'application/x-www-form-urlencoded'
       },
-      body: JSON.stringify({ grant_type: 'client_credentials' })
+      body: params.toString()
     });
 
-    if (!authResponse.ok) throw new Error('Falha na autenticação');
+    if (!authResponse.ok) {
+      const errText = await authResponse.text();
+      throw new Error(`Auth Error: ${authResponse.status} - ${errText}`);
+    }
+    
     const authData = await authResponse.json();
     const token = authData.access_token;
 
@@ -51,19 +57,21 @@ export default async function handler(req, res) {
     });
 
     if (!statusResponse.ok) {
-       // Se der 404 ou erro, assumimos pendente ou erro, mas não travamos
-       return res.status(200).json({ paid: false });
+       // Se não encontrar, apenas retorna não pago para não quebrar o polling
+       return res.status(200).json({ paid: false, error_check: 'Transaction not found or API error' });
     }
 
     const statusData = await statusResponse.json();
-    const status = statusData.status ? statusData.status.toUpperCase() : '';
+    const status = statusData.status ? statusData.status.toUpperCase() : 'UNKNOWN';
 
-    const isPaid = status === 'PAID' || status === 'COMPLETED' || status === 'CONFIRMED' || status === 'APPROVED';
+    // Lista de status considerados "PAGO"
+    const isPaid = ['PAID', 'COMPLETED', 'CONFIRMED', 'APPROVED', 'SETTLED'].includes(status);
 
     return res.status(200).json({ paid: isPaid, status: status });
 
   } catch (error) {
     console.error('Check Status Error:', error);
-    return res.status(500).json({ error: error.message });
+    // Retornamos 200 com paid: false para o frontend não parar de tentar (polling) se for um erro temporário de rede
+    return res.status(200).json({ paid: false, error: error.message });
   }
 }
