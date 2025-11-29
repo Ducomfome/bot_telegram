@@ -11,7 +11,7 @@ interface PaymentModalProps {
   onSuccess: () => void;
 }
 
-export const PaymentModal: React.FC<PaymentModalProps> = ({ plan, pixData, onClose, onSuccess }) => {
+export const PaymentModal: React.FC<PaymentModalProps> = ({ plan, pixData, onClose }) => {
   const [copied, setCopied] = useState(false);
   
   const handleCopy = () => {
@@ -68,22 +68,17 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ plan, pixData, onClo
             </div>
           </div>
 
-          <div className="bg-[#151e27] p-4 rounded-lg w-full text-center">
+          <div className="bg-[#151e27] p-4 rounded-lg w-full text-center border border-yellow-900/30">
             <div className="flex items-center justify-center gap-2 text-yellow-500 mb-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span className="text-sm font-medium">Aguardando pagamento...</span>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span className="text-sm font-bold">Aguardando pagamento...</span>
             </div>
-            <p className="text-xs text-gray-500">
-              O acesso será liberado automaticamente assim que o banco confirmar a transação.
+            <p className="text-xs text-gray-400">
+              Assim que você pagar no seu banco, esta tela atualizará automaticamente e liberará seu acesso.
             </p>
           </div>
           
-          <button 
-            onClick={onSuccess}
-            className="mt-6 w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors text-sm uppercase tracking-wide"
-          >
-            (Simular) Já fiz o pagamento
-          </button>
+          {/* Botão de simulação removido para produção real */}
         </div>
       </div>
     </div>
