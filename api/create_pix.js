@@ -1,4 +1,4 @@
-import { kv } from '@vercel/kv';
+import Redis from 'ioredis';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -25,6 +25,17 @@ export default async function handler(req, res) {
   const rawBaseUrl = process.env.VITE_SYNC_PAY_BASE_URL || 'https://api.syncpayments.com.br';
   const baseUrl = rawBaseUrl.replace(/\/$/, '');
   const webhookUrl = process.env.VITE_WEBHOOK_URL;
+
+  // Conexão Redis via ioredis (TCP)
+  const redisUrl = process.env.KV_REDIS_URL || process.env.KV_URL;
+  let redis = null;
+  if (redisUrl) {
+    try {
+        redis = new Redis(redisUrl);
+    } catch (e) {
+        console.error("Erro conexão Redis:", e);
+    }
+  }
 
   if (!clientId || !clientSecret) {
     return res.status(500).json({ error: 'Credenciais não configuradas.' });
@@ -82,30 +93,35 @@ export default async function handler(req, res) {
 
     if (!copyPaste || !txId) throw new Error('Dados do Pix incompletos');
 
-    // 3. SALVAR NO BANCO (REDIS)
-    try {
-        const timestamp = Date.now();
-        const dateStr = new Date().toLocaleDateString('pt-BR');
-        const locationStr = location ? `${location.city} - ${location.state}` : 'Desconhecido';
-        
-        // HSET simples
-        await kv.hset(`tx:${txId}`, {
-            id: txId,
-            amount: amount,
-            status: 'pending',
-            date: dateStr,
-            timestamp: timestamp, 
-            customerName: 'Cliente Anônimo',
-            location: locationStr
-        });
-        
-        // Adiciona à lista
-        await kv.lpush('transactions_list', `tx:${txId}`);
-        console.log(`[DB] Transação ${txId} salva com sucesso.`);
-
-    } catch (dbErr) {
-        console.error("ERRO CRÍTICO REDIS:", dbErr);
-        // O cliente ainda recebe o Pix mesmo se o log falhar
+    // 3. SALVAR NO BANCO (Redis via ioredis)
+    if (redis) {
+        try {
+            const timestamp = Date.now();
+            const dateStr = new Date().toLocaleDateString('pt-BR');
+            const locationStr = location ? `${location.city} - ${location.state}` : 'Desconhecido';
+            
+            // HSET simples
+            await redis.hset(`tx:${txId}`, {
+                id: txId,
+                amount: amount,
+                status: 'pending',
+                date: dateStr,
+                timestamp: timestamp, 
+                customerName: 'Cliente Anônimo',
+                location: locationStr
+            });
+            
+            // Adiciona à lista
+            await redis.lpush('transactions_list', `tx:${txId}`);
+            console.log(`[DB] Transação ${txId} salva com sucesso.`);
+            
+            // Fecha conexão para não estourar pool serverless
+            await redis.quit();
+        } catch (dbErr) {
+            console.error("ERRO CRÍTICO REDIS:", dbErr);
+        }
+    } else {
+        console.warn("Redis não configurado, transação não salva.");
     }
 
     return res.status(200).json({

@@ -1,8 +1,6 @@
-
-import { kv } from '@vercel/kv';
+import Redis from 'ioredis';
 
 export default async function handler(req, res) {
-  // Configuração CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
@@ -12,17 +10,18 @@ export default async function handler(req, res) {
     return;
   }
 
+  const redisUrl = process.env.KV_REDIS_URL || process.env.KV_URL;
+  if (!redisUrl) return res.status(200).json({ status: 'no_db' });
+
   try {
-    // Pega o IP do usuário (header padrão da Vercel ou fallback)
+    const redis = new Redis(redisUrl);
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
-    
-    // Salva uma chave temporária que expira em 60 segundos
-    // Se o usuário não chamar esse endpoint novamente em 60s, ele é considerado offline
-    await kv.setex(`online:${ip}`, 60, '1');
+    await redis.setex(`online:${ip}`, 60, '1');
+    await redis.quit();
 
     return res.status(200).json({ status: 'ok' });
   } catch (error) {
     console.error("Heartbeat Error:", error);
-    return res.status(200).json({ status: 'error' }); // Não quebra o front
+    return res.status(200).json({ status: 'error' });
   }
 }

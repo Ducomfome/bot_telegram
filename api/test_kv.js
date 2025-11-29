@@ -1,44 +1,46 @@
-import { kv } from '@vercel/kv';
+import Redis from 'ioredis';
 
 export default async function handler(req, res) {
   try {
-    // Diagnóstico de Variáveis (Lista quais existem sem mostrar o valor completo por segurança)
     const envVars = Object.keys(process.env).filter(key => key.startsWith('KV_') || key.includes('REDIS'));
     const envStatus = {};
     
     envVars.forEach(key => {
         const val = process.env[key];
-        envStatus[key] = val ? `${val.substring(0, 5)}...` : 'empty';
+        envStatus[key] = val ? `${val.substring(0, 10)}...` : 'empty';
     });
 
-    const hasRestUrl = !!process.env.KV_REST_API_URL;
-    const hasRestToken = !!process.env.KV_REST_API_TOKEN;
-
-    // Tenta conexão real
+    const redisUrl = process.env.KV_REDIS_URL || process.env.KV_URL;
     let dbStatus = "unknown";
-    let readValue = null;
     let writeError = null;
 
-    try {
-        const testKey = 'test_connection_' + Date.now();
-        await kv.set(testKey, 'ok');
-        readValue = await kv.get(testKey);
-        await kv.del(testKey);
-        dbStatus = "connected";
-    } catch (e) {
-        dbStatus = "error";
-        writeError = e.message;
+    if (redisUrl) {
+        try {
+            const redis = new Redis(redisUrl);
+            const testKey = 'test_conn_ioredis_' + Date.now();
+            await redis.set(testKey, 'ok');
+            const val = await redis.get(testKey);
+            await redis.del(testKey);
+            await redis.quit();
+            
+            if (val === 'ok') {
+                dbStatus = "connected";
+            } else {
+                dbStatus = "read_failed";
+            }
+        } catch (e) {
+            dbStatus = "connection_error";
+            writeError = e.message;
+        }
+    } else {
+        dbStatus = "no_url_found";
     }
 
     return res.status(200).json({ 
         success: dbStatus === "connected", 
         database_status: dbStatus,
         detected_env_vars: envStatus,
-        config_check: {
-            has_rest_url: hasRestUrl,
-            has_rest_token: hasRestToken,
-            message: hasRestUrl ? "Configuração correta para @vercel/kv encontrada." : "AVISO: KV_REST_API_URL não encontrada. O @vercel/kv precisa desta variável."
-        },
+        driver: "ioredis",
         write_error: writeError
     });
   } catch (error) {

@@ -1,4 +1,4 @@
-import { kv } from '@vercel/kv';
+import Redis from 'ioredis';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   const { id } = req.query;
   if (!id) return res.status(400).json({ error: 'Transaction ID is required' });
 
-  // 1. Verificar na SyncPay (Lógica Original)
+  // 1. Verificar na SyncPay
   const clientId = process.env.VITE_SYNC_PAY_CLIENT_ID;
   const clientSecret = process.env.VITE_SYNC_PAY_CLIENT_SECRET;
   const rawBaseUrl = process.env.VITE_SYNC_PAY_BASE_URL || 'https://api.syncpayments.com.br';
@@ -48,7 +48,6 @@ export default async function handler(req, res) {
           'PAID', 'COMPLETED', 'CONFIRMED', 'APPROVED', 'CONCLUIDA', 'PAGO', 'LIQUIDATED'
         ].includes(currentStatus);
     } else {
-        // Fallback: Tenta consultar direto no cash-in se transactions falhar
         const ciUrl = `${baseUrl}/api/partner/v1/cash-in/${id}`;
         const ciRes = await fetch(ciUrl, { headers: { 'Authorization': `Bearer ${access_token}` }});
         if (ciRes.ok) {
@@ -59,19 +58,22 @@ export default async function handler(req, res) {
         }
     }
 
-    // 2. Atualizar Banco de Dados (Redis)
+    // 2. Atualizar Banco de Dados (Redis via ioredis)
     if (currentStatus !== 'UNKNOWN') {
-        try {
-            // Verifica se já existe
-            const exists = await kv.exists(`tx:${id}`);
-            if (exists) {
-                // Atualiza apenas o status
-                const dbStatus = isPaid ? 'paid' : (currentStatus === 'CANCELED' || currentStatus === 'FAILED' ? 'failed' : 'pending');
-                await kv.hset(`tx:${id}`, { status: dbStatus });
-                console.log(`[DB] Status da tx ${id} atualizado para ${dbStatus}`);
+        const redisUrl = process.env.KV_REDIS_URL || process.env.KV_URL;
+        if (redisUrl) {
+            try {
+                const redis = new Redis(redisUrl);
+                const exists = await redis.exists(`tx:${id}`);
+                if (exists) {
+                    const dbStatus = isPaid ? 'paid' : (currentStatus === 'CANCELED' || currentStatus === 'FAILED' ? 'failed' : 'pending');
+                    await redis.hset(`tx:${id}`, { status: dbStatus });
+                    console.log(`[DB] Status da tx ${id} atualizado para ${dbStatus}`);
+                }
+                await redis.quit();
+            } catch (dbError) {
+                console.error("Erro ao atualizar Redis:", dbError);
             }
-        } catch (dbError) {
-            console.error("Erro ao atualizar Redis:", dbError);
         }
     }
 

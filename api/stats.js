@@ -1,4 +1,4 @@
-import { kv } from '@vercel/kv';
+import Redis from 'ioredis';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -10,7 +10,6 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Fallback seguro se o banco não estiver configurado
   const emptyStats = {
     totalRevenue: 0,
     totalVisitors: 0,
@@ -22,50 +21,56 @@ export default async function handler(req, res) {
     status: "db_not_configured"
   };
 
-  if (!process.env.KV_REST_API_URL) {
-      console.warn("API STATS: KV_REST_API_URL não encontrada.");
+  const redisUrl = process.env.KV_REDIS_URL || process.env.KV_URL;
+
+  if (!redisUrl) {
+      console.warn("API STATS: Variável KV_REDIS_URL não encontrada.");
       return res.status(200).json(emptyStats);
   }
 
   try {
+    const redis = new Redis(redisUrl);
+
     // 1. Visitantes
-    const visitors = await kv.get('site_visitors') || 0;
+    const visitors = await redis.get('site_visitors') || 0;
     
-    // 2. Online Users (Padrão: chaves online:*)
+    // 2. Online Users
     let activeUsers = 0;
     try {
-        const onlineKeys = await kv.keys('online:*');
+        const onlineKeys = await redis.keys('online:*');
         activeUsers = onlineKeys ? onlineKeys.length : 0;
     } catch (e) { console.warn("Erro ao contar online:", e.message); }
 
-    // 3. Transações (Tenta lista segura primeiro, depois chaves soltas)
+    // 3. Transações
     let txKeys = [];
     try {
-        txKeys = await kv.lrange('transactions_list', 0, -1);
+        txKeys = await redis.lrange('transactions_list', 0, -1);
     } catch (e) { console.warn("Erro ao ler transactions_list:", e.message); }
 
     if (!txKeys || txKeys.length === 0) {
         try {
-            // Fallback para varredura de chaves (mais lento, mas funciona)
-            txKeys = await kv.keys('tx:*');
+            txKeys = await redis.keys('tx:*');
         } catch (e) {}
     }
 
     let transactions = [];
     if (txKeys && txKeys.length > 0) {
-        // Limpeza de chaves duplicadas
         const uniqueKeys = [...new Set(txKeys)].map(k => k.startsWith('tx:') ? k : `tx:${k}`);
         
         if (uniqueKeys.length > 0) {
-            // Pipeline para performance
-            const pipeline = kv.pipeline();
+            const pipeline = redis.pipeline();
             uniqueKeys.forEach(k => pipeline.hgetall(k));
             const results = await pipeline.exec();
             
-            // Filtra nulos
-            transactions = results.filter(t => t && t.amount);
+            // ioredis pipeline results: [[err, result], [err, result]...]
+            transactions = results
+                .map(r => r[1])
+                .filter(t => t && t.amount);
         }
     }
+    
+    // Fechar conexão
+    await redis.quit();
 
     // 4. Processamento dos dados
     let totalRevenue = 0;
@@ -74,7 +79,6 @@ export default async function handler(req, res) {
     let failedCount = 0;
     const salesByDayMap = {};
 
-    // Ordena por data decrescente
     transactions.sort((a, b) => (Number(b.timestamp) || 0) - (Number(a.timestamp) || 0));
 
     transactions.forEach(tx => {
@@ -86,7 +90,6 @@ export default async function handler(req, res) {
             totalRevenue += amount;
             paidCount++;
             
-            // Agrupa por dia DD/MM
             const dayParts = dateStr.split('/');
             if (dayParts.length >= 2) {
                 const shortDate = `${dayParts[0]}/${dayParts[1]}`;
@@ -99,7 +102,6 @@ export default async function handler(req, res) {
         }
     });
 
-    // Formata gráfico (últimos 7 dias ou os que tiverem dados)
     const salesByDay = Object.keys(salesByDayMap).map(day => ({
         day,
         value: salesByDayMap[day]
