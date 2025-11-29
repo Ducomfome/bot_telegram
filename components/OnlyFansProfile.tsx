@@ -209,9 +209,9 @@ export const OnlyFansProfile: React.FC = () => {
           
           <div className="mb-2">
              <h2 className="text-xl font-bold flex items-center gap-1 text-gray-900 leading-tight">
-               Safadinha 😈 <Verified className={`w-5 h-5 ${TEXT_BRAND} fill-current`} />
+               Isabelle Oliveira 😈 <Verified className={`w-5 h-5 ${TEXT_BRAND} fill-current`} />
              </h2>
-             <span className="text-gray-500 text-sm">@safadinha_vip</span>
+             <span className="text-gray-500 text-sm">@isabelleoliveira</span>
           </div>
 
           <div className="text-sm text-gray-600 leading-relaxed mb-4">
@@ -310,7 +310,7 @@ export const OnlyFansProfile: React.FC = () => {
                             </div>
                             <div>
                                 <h4 className="font-bold text-sm text-gray-900 flex items-center gap-1">
-                                    Safadinha 😈 <Verified className={`w-3 h-3 ${TEXT_BRAND}`} />
+                                    Isabelle Oliveira 😈 <Verified className={`w-3 h-3 ${TEXT_BRAND}`} />
                                 </h4>
                                 <span className="text-xs text-gray-400">Há {post.time} • {post.isLocked ? 'Assinantes' : 'Público'}</span>
                             </div>
