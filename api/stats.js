@@ -1,4 +1,3 @@
-
 import { kv } from '@vercel/kv';
 
 export default async function handler(req, res) {
@@ -11,88 +10,80 @@ export default async function handler(req, res) {
     return;
   }
 
-  try {
-    // Verificação de segurança
-    if (!process.env.KV_REST_API_URL) {
-        console.error("KV_REST_API_URL não definida.");
-        return res.status(200).json(getEmptyStats());
-    }
+  // Se não tiver variável, retorna zerado sem erro 500
+  if (!process.env.KV_REST_API_URL) {
+      console.warn("KV não configurado.");
+      return res.status(200).json(getEmptyStats());
+  }
 
-    // 1. Buscar Visitantes e Online
+  try {
+    // 1. Visitantes
     const visitors = await kv.get('site_visitors') || 0;
     
-    // kv.keys pode retornar null ou throw em alguns casos, tratamos isso
+    // 2. Online Users
     let activeUsers = 0;
     try {
         const onlineKeys = await kv.keys('online:*');
         activeUsers = onlineKeys ? onlineKeys.length : 0;
     } catch (e) {
-        console.warn("Erro ao contar online:", e);
+        // Ignora erro de keys
     }
 
-    // 2. Buscar Transações (Lista + Fallback)
+    // 3. Transações
     let txKeys = [];
     try {
         txKeys = await kv.lrange('transactions_list', 0, -1);
     } catch (e) {
-        console.warn("Erro lrange:", e);
+        console.warn("Erro ao ler lista:", e);
     }
-    
-    // Fallback: Se a lista estiver vazia, tenta escanear chaves tx:*
+
+    // Fallback se lista vazia
     if (!txKeys || txKeys.length === 0) {
-       console.log("Lista vazia, buscando chaves tx:* diretamente...");
-       try {
-         txKeys = await kv.keys('tx:*');
-       } catch (e) {
-         txKeys = [];
-       }
+        try {
+            txKeys = await kv.keys('tx:*');
+        } catch (e) {}
     }
 
     let transactions = [];
-
     if (txKeys && txKeys.length > 0) {
+        // Remove duplicatas e garante formato
         const uniqueKeys = [...new Set(txKeys)].map(k => k.startsWith('tx:') ? k : `tx:${k}`);
         
+        // Pipeline para buscar tudo rápido
         if (uniqueKeys.length > 0) {
             const pipeline = kv.pipeline();
-            uniqueKeys.forEach(key => pipeline.hgetall(key));
+            uniqueKeys.forEach(k => pipeline.hgetall(k));
             const results = await pipeline.exec();
-            
-            // Filtra nulos
-            transactions = results.filter(tx => tx && tx.amount);
+            // Filtra resultados válidos
+            transactions = results.filter(t => t && t.amount);
         }
     }
 
-    // 3. Calcular Métricas
+    // 4. Cálculos
     let totalRevenue = 0;
     let paidCount = 0;
     let pendingCount = 0;
     let failedCount = 0;
     const salesByDayMap = {};
 
-    transactions.sort((a, b) => {
-        const timeA = Number(a.timestamp) || 0;
-        const timeB = Number(b.timestamp) || 0;
-        return timeB - timeA;
-    });
+    transactions.sort((a, b) => (Number(b.timestamp) || 0) - (Number(a.timestamp) || 0));
 
     transactions.forEach(tx => {
         const amount = parseFloat(tx.amount || 0);
         const status = (tx.status || 'pending').toLowerCase();
         
-        if (status === 'paid' || status === 'approved' || status === 'completed') {
+        if (['paid', 'approved', 'completed', 'pago'].includes(status)) {
             totalRevenue += amount;
             paidCount++;
             
             if (tx.date) {
-                const dayParts = tx.date.split('/');
+                const dayParts = tx.date.split('/'); // DD/MM/YYYY
                 if (dayParts.length >= 2) {
                     const shortDate = `${dayParts[0]}/${dayParts[1]}`;
-                    if (!salesByDayMap[shortDate]) salesByDayMap[shortDate] = 0;
-                    salesByDayMap[shortDate] += amount;
+                    salesByDayMap[shortDate] = (salesByDayMap[shortDate] || 0) + amount;
                 }
             }
-        } else if (status === 'failed' || status === 'canceled') {
+        } else if (['failed', 'canceled'].includes(status)) {
             failedCount++;
         } else {
             pendingCount++;
@@ -102,29 +93,28 @@ export default async function handler(req, res) {
     const salesByDay = Object.keys(salesByDayMap).map(day => ({
         day,
         value: salesByDayMap[day]
-    })).slice(-7);
+    })).slice(-7); // Últimos 7 dias
 
     const conversionRate = visitors > 0 ? ((paidCount / visitors) * 100).toFixed(1) : 0;
 
-    const stats = {
+    return res.status(200).json({
       totalRevenue,
       totalVisitors: parseInt(visitors),
       conversionRate: parseFloat(conversionRate),
-      activeUsers, 
+      activeUsers,
       salesByDay,
       statusDistribution: [
          { status: 'Pago', count: paidCount, color: '#4ade80' },
          { status: 'Pendente', count: pendingCount, color: '#facc15' },
          { status: 'Falha', count: failedCount, color: '#ef4444' }
       ],
-      recentTransactions: transactions.slice(0, 50)
-    };
-
-    res.status(200).json(stats);
+      recentTransactions: transactions.slice(0, 50),
+      debug_db_status: "connected"
+    });
 
   } catch (error) {
-    console.error("Dashboard Stats Error:", error);
-    res.status(200).json(getEmptyStats());
+    console.error("Stats Error:", error);
+    return res.status(200).json(getEmptyStats());
   }
 }
 

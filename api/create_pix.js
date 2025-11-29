@@ -1,4 +1,3 @@
-
 import { kv } from '@vercel/kv';
 
 export default async function handler(req, res) {
@@ -28,109 +27,92 @@ export default async function handler(req, res) {
   const webhookUrl = process.env.VITE_WEBHOOK_URL;
 
   if (!clientId || !clientSecret) {
-    return res.status(500).json({ error: 'Credenciais (Client ID/Secret) não configuradas na Vercel.' });
+    return res.status(500).json({ error: 'Credenciais não configuradas.' });
   }
 
   try {
     // 1. AUTENTICAÇÃO
-    let token = null;
-    try {
-        const authUrl = `${baseUrl}/api/partner/v1/auth-token`;
-        const authResponse = await fetch(authUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({ client_id: clientId, client_secret: clientSecret })
-        });
-        if (!authResponse.ok) throw new Error('Auth Failed');
-        const authData = await authResponse.json();
-        token = authData.access_token;
-    } catch (e) {
-        console.error("Auth Error:", e);
-        throw new Error("Falha na autenticação com gateway.");
-    }
+    const authRes = await fetch(`${baseUrl}/api/partner/v1/auth-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ client_id: clientId, client_secret: clientSecret })
+    });
+    
+    if (!authRes.ok) throw new Error('Falha Auth Gateway');
+    const { access_token } = await authRes.json();
 
-    // 2. CRIAÇÃO DO PIX
-    const pixRoutes = ['/api/partner/v1/cash-in', '/api/partner/v1/pix-cash-in'];
+    // 2. CRIAÇÃO PIX
+    // Tenta rotas comuns
+    const routes = ['/api/partner/v1/cash-in', '/api/partner/v1/pix-cash-in'];
     let pixData = null;
-    let pixError = null;
 
-    const pixBody = {
-      amount: Number(amount),
-      description: description || 'Acesso VIP',
-      webhook_url: webhookUrl,
-      client: {
-        name: "Cliente Anônimo",
-        cpf: "00000000000", 
-        email: "cliente@anonimo.com",
-        phone: "11999999999"
-      }
+    const body = {
+        amount: Number(amount),
+        description: description || 'VIP',
+        webhook_url: webhookUrl,
+        client: {
+            name: "Anonimo",
+            cpf: "00000000000",
+            email: "a@a.com",
+            phone: "11999999999"
+        }
     };
 
-    for (const route of pixRoutes) {
+    for (const r of routes) {
         try {
-            const url = `${baseUrl}${route}`;
-            const response = await fetch(url, {
+            const resp = await fetch(`${baseUrl}${r}`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
+                headers: { 
+                    'Authorization': `Bearer ${access_token}`,
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify(pixBody)
+                body: JSON.stringify(body)
             });
-
-            if (response.ok) {
-                pixData = await response.json();
-                break; 
-            } else {
-                pixError = await response.text();
+            if (resp.ok) {
+                pixData = await resp.json();
+                break;
             }
-        } catch (e) {
-            console.warn(`Rota ${route} falhou.`);
-        }
+        } catch (e) {}
     }
 
-    if (!pixData) {
-        throw new Error(`Falha ao criar Pix: ${pixError || 'Erro desconhecido'}`);
-    }
+    if (!pixData) throw new Error('Falha ao criar Pix na SyncPay');
 
     const copyPaste = pixData.pix_code || pixData.qrcode_text || pixData.emv;
     const txId = pixData.identifier || pixData.transaction_id || pixData.id;
 
-    if (!copyPaste || !txId) {
-      throw new Error("API não retornou o código Pix.");
-    }
+    if (!copyPaste || !txId) throw new Error('Dados do Pix incompletos');
 
-    // 3. SALVAR NO BANCO DE DADOS (Redis)
+    // 3. SALVAR NO BANCO (REDIS)
+    // Objeto FLAT (sem nested objects) para evitar erro no HSET
+    const locationStr = location ? `${location.city} - ${location.state}` : 'Desconhecido';
+    
     try {
-        const timestamp = Date.now();
-        const txRecord = {
+        await kv.hset(`tx:${txId}`, {
             id: txId,
             amount: amount,
             status: 'pending',
             date: new Date().toLocaleDateString('pt-BR'),
-            timestamp: timestamp, // Salva como número
+            timestamp: Date.now(), // Numérico para sort
             customerName: 'Cliente Anônimo',
-            location: location ? `${location.city} - ${location.state}` : 'Desconhecido'
-        };
-
-        await kv.hset(`tx:${txId}`, txRecord);
-        await kv.lpush('transactions_list', `tx:${txId}`);
+            location: locationStr
+        });
         
-        console.log(`[DB] Transação ${txId} salva com sucesso.`);
-    } catch (dbError) {
-        console.error("ERRO CRÍTICO AO SALVAR NO REDIS:", dbError);
+        // Adiciona à lista oficial
+        await kv.lpush('transactions_list', `tx:${txId}`);
+    } catch (dbErr) {
+        console.error("DB Error:", dbErr);
+        // Não quebra a requisição se o banco falhar, o cliente ainda recebe o Pix
     }
 
     return res.status(200).json({
       transactionId: txId,
-      qrCodeBase64: null, 
       copyPasteCode: copyPaste,
-      location_saved: !!location 
+      qrCodeBase64: null
     });
 
   } catch (error) {
-    console.error('API Handler Error:', error);
+    console.error('Create Pix Error:', error);
     return res.status(500).json({ error: error.message });
   }
 }
