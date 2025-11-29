@@ -1,14 +1,18 @@
 
-import { PixPaymentData } from '../types';
+import { PixPaymentData, UserLocation } from '../types';
 
-export const createPixTransaction = async (amount: number, description: string): Promise<PixPaymentData> => {
+export const createPixTransaction = async (amount: number, description: string, location?: UserLocation): Promise<PixPaymentData> => {
   try {
     const response = await fetch('/api/create_pix', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ amount, description })
+      body: JSON.stringify({ 
+        amount, 
+        description,
+        location // Enviando dados de cidade/estado
+      })
     });
 
     const contentType = response.headers.get("content-type");
@@ -26,9 +30,6 @@ export const createPixTransaction = async (amount: number, description: string):
       throw new Error(data.error || "Erro desconhecido ao gerar Pix.");
     }
     
-    // Validação ajustada para a API SyncPay
-    // A API retorna apenas 'pix_code' (copyPasteCode), sem imagem Base64.
-    // O Frontend gera a imagem visualmente usando react-qr-code.
     if (!data.copyPasteCode) {
       console.warn("Payload Debug:", data);
       throw new Error("A API conectou, mas não retornou o código Pix.");
@@ -36,7 +37,7 @@ export const createPixTransaction = async (amount: number, description: string):
 
     return {
       transactionId: data.transactionId,
-      qrCodeBase64: data.qrCodeBase64 || '', // Pode vir vazio
+      qrCodeBase64: data.qrCodeBase64 || '',
       copyPasteCode: data.copyPasteCode
     };
 

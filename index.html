@@ -47,6 +47,44 @@
         from { transform: translateY(100%); }
         to { transform: translateY(0); }
       }
+
+      /* Simple CSS Charts for Dashboard */
+      .bar-container {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+        height: 150px;
+      }
+      .bar {
+        flex: 1;
+        background-color: #4a9c6d;
+        border-radius: 4px 4px 0 0;
+        transition: height 0.5s ease;
+        min-height: 4px;
+        position: relative;
+      }
+      .bar:hover::after {
+        content: attr(data-value);
+        position: absolute;
+        top: -25px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #000;
+        color: #fff;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 10px;
+      }
+      .pie-chart {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: conic-gradient(
+          #4ade80 0% var(--p-paid), 
+          #facc15 var(--p-paid) var(--p-pending), 
+          #ef4444 var(--p-pending) 100%
+        );
+      }
     </style>
     <script type="importmap">
     {

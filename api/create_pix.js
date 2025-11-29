@@ -1,3 +1,4 @@
+
 export default async function handler(req, res) {
   // Configuração CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -17,7 +18,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { amount, description } = req.body;
+  const { amount, description, location } = req.body;
+  
+  // Log da localização para "Banco de Dados" futuro
+  if (location) {
+    console.log(`[GEO] Novo pedido de: ${location.city} - ${location.state} (${location.country})`);
+  } else {
+    console.log(`[GEO] Pedido sem localização definida.`);
+  }
   
   const clientId = process.env.VITE_SYNC_PAY_CLIENT_ID;
   const clientSecret = process.env.VITE_SYNC_PAY_CLIENT_SECRET;
@@ -33,11 +41,107 @@ export default async function handler(req, res) {
     // ---------------------------------------------------------
     // 1. AUTENTICAÇÃO
     // ---------------------------------------------------------
-    const authUrl = `${baseUrl}/api/partner/v1/auth-token`;
+    // Fallback URL logic para autenticação
+    let token = null;
+    let authError = null;
     
-    console.log(`[AUTH] Solicitando token em: ${authUrl}`);
-    
-    const authResponse = await fetch(authUrl, {
+    // Tenta rota padrão
+    try {
+      token = await tryAuth(baseUrl, '/api/partner/v1/auth-token', clientId, clientSecret);
+    } catch (e) {
+      console.log("Auth na rota padrão falhou, tentando fallback...", e.message);
+      authError = e;
+    }
+
+    if (!token) {
+       throw new Error(`Falha na autenticação em todas as rotas. Último erro: ${authError?.message}`);
+    }
+
+    // ---------------------------------------------------------
+    // 2. CRIAÇÃO DO PIX (Cash-In)
+    // ---------------------------------------------------------
+    // Tentativa e erro nas rotas de criação do Pix
+    const pixRoutes = [
+        '/api/partner/v1/cash-in',
+        '/api/partner/v1/pix-cash-in',
+        '/api/partner/v1/pix/cash-in'
+    ];
+
+    let pixData = null;
+    let pixError = null;
+
+    const pixBody = {
+      amount: Number(amount),
+      description: description || 'Acesso VIP',
+      webhook_url: webhookUrl,
+      client: {
+        name: "Cliente VIP",
+        cpf: "00000000000", 
+        email: "cliente@email.com",
+        phone: "11999999999"
+      }
+    };
+
+    for (const route of pixRoutes) {
+        try {
+            const url = `${baseUrl}${route}`;
+            console.log(`[PIX] Tentando criar em: ${url}`);
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(pixBody)
+            });
+
+            if (response.ok) {
+                pixData = await response.json();
+                console.log(`[PIX] Sucesso na rota: ${route}`);
+                break; // Sucesso!
+            } else {
+                const txt = await response.text();
+                console.warn(`[PIX] Falha na rota ${route}: ${response.status} - ${txt}`);
+                pixError = txt; // Guarda o erro para debug
+            }
+        } catch (e) {
+            console.warn(`[PIX] Erro de rede na rota ${route}:`, e);
+        }
+    }
+
+    if (!pixData) {
+        throw new Error(`Falha ao criar Pix. Último erro: ${pixError || 'Nenhuma rota respondeu corretamente'}`);
+    }
+
+    // ---------------------------------------------------------
+    // 3. NORMALIZAÇÃO DA RESPOSTA
+    // ---------------------------------------------------------
+    const copyPaste = pixData.pix_code || pixData.qrcode_text || pixData.emv;
+    const txId = pixData.identifier || pixData.transaction_id || pixData.id;
+
+    if (!copyPaste || !txId) {
+      console.error("Payload recebido:", pixData);
+      throw new Error("API respondeu, mas faltam campos obrigatórios (pix_code ou identifier).");
+    }
+
+    return res.status(200).json({
+      transactionId: txId,
+      qrCodeBase64: null, 
+      copyPasteCode: copyPaste,
+      location_saved: !!location // Confirmação debug
+    });
+
+  } catch (error) {
+    console.error('API Handler Error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+}
+
+async function tryAuth(baseUrl, path, clientId, clientSecret) {
+    const url = `${baseUrl}${path}`;
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -49,82 +153,7 @@ export default async function handler(req, res) {
       })
     });
 
-    if (!authResponse.ok) {
-      const errText = await authResponse.text();
-      console.error("[AUTH ERROR]", errText);
-      throw new Error(`Erro Auth (${authResponse.status}): Verifique credenciais.`);
-    }
-
-    const authData = await authResponse.json();
-    const token = authData.access_token;
-    
-    if (!token) {
-      throw new Error("Token não retornado pela API.");
-    }
-
-    // ---------------------------------------------------------
-    // 2. CRIAÇÃO DO PIX (Cash-In)
-    // ---------------------------------------------------------
-    // Rota confirmada pela documentação: POST /api/partner/v1/cash-in
-    const pixUrl = `${baseUrl}/api/partner/v1/cash-in`;
-    
-    console.log(`[PIX] Criando transação em: ${pixUrl}`);
-
-    const pixBody = {
-      amount: Number(amount),
-      description: description || 'Acesso VIP',
-      webhook_url: webhookUrl,
-      // Dados dummy do cliente para evitar erro 422 (mesmo sendo opcional na doc, é boa prática)
-      client: {
-        name: "Cliente VIP",
-        cpf: "00000000000", 
-        email: "cliente@email.com",
-        phone: "11999999999"
-      }
-    };
-
-    const pixResponse = await fetch(pixUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(pixBody)
-    });
-
-    if (!pixResponse.ok) {
-      const errText = await pixResponse.text();
-      console.error("[PIX ERROR]", errText);
-      throw new Error(`Falha API Pix (${pixResponse.status}): ${errText}`);
-    }
-
-    const pixData = await pixResponse.json();
-
-    // ---------------------------------------------------------
-    // 3. NORMALIZAÇÃO DA RESPOSTA (Baseado na Documentação)
-    // ---------------------------------------------------------
-    // Doc diz: 
-    // "pix_code": string (Copia e cola)
-    // "identifier": string (UUID)
-    
-    const copyPaste = pixData.pix_code;
-    const txId = pixData.identifier;
-
-    if (!copyPaste || !txId) {
-      console.error("Payload recebido:", pixData);
-      throw new Error("API respondeu, mas faltam campos obrigatórios (pix_code ou identifier).");
-    }
-
-    return res.status(200).json({
-      transactionId: txId,
-      qrCodeBase64: null, // A API não retorna imagem, o Frontend vai gerar via react-qr-code
-      copyPasteCode: copyPaste,
-      debug_raw: pixData
-    });
-
-  } catch (error) {
-    console.error('API Handler Error:', error);
-    return res.status(500).json({ error: error.message });
-  }
+    if (!response.ok) throw new Error(`Status ${response.status}`);
+    const data = await response.json();
+    return data.access_token;
 }

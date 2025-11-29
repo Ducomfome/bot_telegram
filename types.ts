@@ -23,3 +23,29 @@ export interface PixPaymentData {
 }
 
 export type PaymentStatus = 'idle' | 'loading' | 'pending' | 'approved';
+
+export interface UserLocation {
+  city: string;
+  state: string;
+  country: string;
+}
+
+// Dashboard Types
+export interface TransactionRecord {
+  id: string;
+  customerName: string;
+  amount: number;
+  status: 'paid' | 'pending' | 'failed';
+  date: string;
+  location: string; // "São Paulo - SP"
+}
+
+export interface DashboardStats {
+  totalRevenue: number;
+  totalVisitors: number;
+  conversionRate: number;
+  activeUsers: number;
+  salesByDay: { day: string; value: number }[];
+  statusDistribution: { status: string; count: number; color: string }[];
+  recentTransactions: TransactionRecord[];
+}
