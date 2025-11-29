@@ -1,6 +1,7 @@
 
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { Message } from '../types';
+import { Play, Volume2 } from 'lucide-react';
 
 interface MessageBubbleProps {
   message: Message;
@@ -8,6 +9,16 @@ interface MessageBubbleProps {
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   const isBot = message.sender === 'bot';
+  const [isPlaying, setIsPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const handlePlayVideo = () => {
+    if (videoRef.current) {
+      setIsPlaying(true);
+      videoRef.current.muted = false; // Garante que o som esteja ativado
+      videoRef.current.play();
+    }
+  };
   
   return (
     <div className={`flex w-full ${isBot ? 'justify-start' : 'justify-end'} mb-2`}>
@@ -27,15 +38,28 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
           )}
           
           {message.type === 'video' && (
-            <video 
-              src={message.content} 
-              className="w-full h-auto max-h-[400px]" 
-              autoPlay 
-              muted 
-              loop 
-              playsInline 
-              controls={false}
-            />
+            <div className="relative group cursor-pointer" onClick={!isPlaying ? handlePlayVideo : undefined}>
+              {!isPlaying && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 z-10 transition-all hover:bg-black/30">
+                   <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mb-2 animate-pulse">
+                      <div className="w-12 h-12 bg-[#4a9c6d] rounded-full flex items-center justify-center shadow-lg transform transition-transform group-hover:scale-110">
+                         <Play className="w-6 h-6 text-white ml-1" fill="currentColor" />
+                      </div>
+                   </div>
+                   <span className="text-white font-bold text-sm drop-shadow-md flex items-center gap-2 bg-black/50 px-3 py-1 rounded-full">
+                      <Volume2 className="w-4 h-4" /> TOQUE PARA OUVIR
+                   </span>
+                </div>
+              )}
+              <video 
+                ref={videoRef}
+                src={message.content} 
+                className="w-full h-auto max-h-[400px]" 
+                playsInline 
+                controls={isPlaying} // Mostra controles apenas após dar play
+                onEnded={() => setIsPlaying(false)}
+              />
+            </div>
           )}
 
           {message.type === 'text' && (
