@@ -2,41 +2,49 @@ import { kv } from '@vercel/kv';
 
 export default async function handler(req, res) {
   try {
-    const envUrl = process.env.KV_REST_API_URL;
-    const envToken = process.env.KV_REST_API_TOKEN;
+    // Diagnóstico de Variáveis (Lista quais existem sem mostrar o valor completo por segurança)
+    const envVars = Object.keys(process.env).filter(key => key.startsWith('KV_') || key.includes('REDIS'));
+    const envStatus = {};
+    
+    envVars.forEach(key => {
+        const val = process.env[key];
+        envStatus[key] = val ? `${val.substring(0, 5)}...` : 'empty';
+    });
 
-    if (!envUrl || !envToken) {
-        return res.status(500).json({
-            success: false,
-            message: "Variáveis de ambiente NÃO encontradas.",
-            details: {
-                hasUrl: !!envUrl,
-                hasToken: !!envToken,
-                hint: "Vá na Vercel > Settings > Environment Variables e verifique se KV_REST_API_URL existe. Se não, refaça a conexão no Storage."
-            }
-        });
+    const hasRestUrl = !!process.env.KV_REST_API_URL;
+    const hasRestToken = !!process.env.KV_REST_API_TOKEN;
+
+    // Tenta conexão real
+    let dbStatus = "unknown";
+    let readValue = null;
+    let writeError = null;
+
+    try {
+        const testKey = 'test_connection_' + Date.now();
+        await kv.set(testKey, 'ok');
+        readValue = await kv.get(testKey);
+        await kv.del(testKey);
+        dbStatus = "connected";
+    } catch (e) {
+        dbStatus = "error";
+        writeError = e.message;
     }
 
-    // Tenta escrever e ler
-    const testKey = 'test_connection_' + Date.now();
-    await kv.set(testKey, 'ok');
-    const value = await kv.get(testKey);
-    
-    // Limpa
-    await kv.del(testKey);
-
     return res.status(200).json({ 
-        success: true, 
-        read_value: value,
-        env_configured: true,
-        message: "Banco de dados CONECTADO e funcionando! Gere um novo Pix para vê-lo no painel." 
+        success: dbStatus === "connected", 
+        database_status: dbStatus,
+        detected_env_vars: envStatus,
+        config_check: {
+            has_rest_url: hasRestUrl,
+            has_rest_token: hasRestToken,
+            message: hasRestUrl ? "Configuração correta para @vercel/kv encontrada." : "AVISO: KV_REST_API_URL não encontrada. O @vercel/kv precisa desta variável."
+        },
+        write_error: writeError
     });
   } catch (error) {
     return res.status(500).json({ 
         success: false, 
-        error: error.message,
-        stack: error.stack,
-        hint: "Erro de conexão com o Redis. Verifique se o Token é válido."
+        error: error.message 
     });
   }
 }

@@ -42,7 +42,6 @@ export default async function handler(req, res) {
     const { access_token } = await authRes.json();
 
     // 2. CRIAÇÃO PIX
-    // Tenta rotas comuns
     const routes = ['/api/partner/v1/cash-in', '/api/partner/v1/pix-cash-in'];
     let pixData = null;
 
@@ -84,25 +83,29 @@ export default async function handler(req, res) {
     if (!copyPaste || !txId) throw new Error('Dados do Pix incompletos');
 
     // 3. SALVAR NO BANCO (REDIS)
-    // Objeto FLAT (sem nested objects) para evitar erro no HSET
-    const locationStr = location ? `${location.city} - ${location.state}` : 'Desconhecido';
-    
     try {
+        const timestamp = Date.now();
+        const dateStr = new Date().toLocaleDateString('pt-BR');
+        const locationStr = location ? `${location.city} - ${location.state}` : 'Desconhecido';
+        
+        // HSET simples
         await kv.hset(`tx:${txId}`, {
             id: txId,
             amount: amount,
             status: 'pending',
-            date: new Date().toLocaleDateString('pt-BR'),
-            timestamp: Date.now(), // Numérico para sort
+            date: dateStr,
+            timestamp: timestamp, 
             customerName: 'Cliente Anônimo',
             location: locationStr
         });
         
-        // Adiciona à lista oficial
+        // Adiciona à lista
         await kv.lpush('transactions_list', `tx:${txId}`);
+        console.log(`[DB] Transação ${txId} salva com sucesso.`);
+
     } catch (dbErr) {
-        console.error("DB Error:", dbErr);
-        // Não quebra a requisição se o banco falhar, o cliente ainda recebe o Pix
+        console.error("ERRO CRÍTICO REDIS:", dbErr);
+        // O cliente ainda recebe o Pix mesmo se o log falhar
     }
 
     return res.status(200).json({
