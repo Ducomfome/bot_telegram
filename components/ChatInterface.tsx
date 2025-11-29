@@ -82,19 +82,20 @@ export const ChatInterface: React.FC = () => {
 
   useEffect(() => {
     const runSequence = async () => {
-      const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      // Renomeado para evitar conflito de nome
+      const getNow = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
       await new Promise(r => setTimeout(r, 800));
-      setMessages(prev => [...prev, { id: '1', type: 'image', content: MEDIA_URLS.IMG_1, sender: 'bot', timestamp: now() }]);
+      setMessages(prev => [...prev, { id: '1', type: 'image', content: MEDIA_URLS.IMG_1, sender: 'bot', timestamp: getNow() }]);
 
       await new Promise(r => setTimeout(r, 1200));
-      setMessages(prev => [...prev, { id: '2', type: 'video', content: MEDIA_URLS.VIDEO_1, sender: 'bot', timestamp: now() }]);
+      setMessages(prev => [...prev, { id: '2', type: 'video', content: MEDIA_URLS.VIDEO_1, sender: 'bot', timestamp: getNow() }]);
 
       await new Promise(r => setTimeout(r, 1200));
-      setMessages(prev => [...prev, { id: '3', type: 'image', content: MEDIA_URLS.IMG_2, sender: 'bot', timestamp: now() }]);
+      setMessages(prev => [...prev, { id: '3', type: 'image', content: MEDIA_URLS.IMG_2, sender: 'bot', timestamp: getNow() }]);
 
       await new Promise(r => setTimeout(r, 1000));
-      setMessages(prev => [...prev, { id: '4', type: 'text', content: SALES_COPY, sender: 'bot', timestamp: now() }]);
+      setMessages(prev => [...prev, { id: '4', type: 'text', content: SALES_COPY, sender: 'bot', timestamp: getNow() }]);
 
       await new Promise(r => setTimeout(r, 600));
       setButtonsVisible(true);
@@ -129,13 +130,13 @@ export const ChatInterface: React.FC = () => {
 
     if (pollingRef.current) clearInterval(pollingRef.current);
 
-    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setMessages(prev => [...prev, {
       id: 'success',
       type: 'text',
       content: `✅ PAGAMENTO CONFIRMADO!\n\nSeja bem-vindo(a) ao grupo VIP.\n\nClique no botão abaixo para entrar.`,
       sender: 'bot',
-      timestamp: now
+      timestamp: nowStr
     }]);
   };
 
