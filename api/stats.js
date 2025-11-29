@@ -53,7 +53,7 @@ export default async function handler(req, res) {
         } catch (e) {}
     }
 
-    let transactions = [];
+    let rawTransactions = [];
     if (txKeys && txKeys.length > 0) {
         const uniqueKeys = [...new Set(txKeys)].map(k => k.startsWith('tx:') ? k : `tx:${k}`);
         
@@ -63,26 +63,34 @@ export default async function handler(req, res) {
             const results = await pipeline.exec();
             
             // ioredis pipeline results: [[err, result], [err, result]...]
-            transactions = results
+            rawTransactions = results
                 .map(r => r[1])
-                .filter(t => t && t.amount);
+                .filter(t => t && t.amount); // Filtra nulos
         }
     }
     
     // Fechar conexão
     await redis.quit();
 
-    // 4. Processamento dos dados
+    // 4. Processamento dos dados (CONVERSÃO DE TIPOS IMPORTANTE)
+    // Converte strings do Redis para números reais para evitar erro no .toFixed()
+    const transactions = rawTransactions.map(tx => ({
+        ...tx,
+        amount: parseFloat(tx.amount || 0),
+        timestamp: Number(tx.timestamp || 0)
+    }));
+
     let totalRevenue = 0;
     let paidCount = 0;
     let pendingCount = 0;
     let failedCount = 0;
     const salesByDayMap = {};
 
-    transactions.sort((a, b) => (Number(b.timestamp) || 0) - (Number(a.timestamp) || 0));
+    // Ordena por data (mais recente primeiro)
+    transactions.sort((a, b) => b.timestamp - a.timestamp);
 
     transactions.forEach(tx => {
-        const amount = parseFloat(tx.amount || 0);
+        const amount = tx.amount; // Já é número agora
         const status = (tx.status || 'pending').toLowerCase();
         const dateStr = tx.date || '';
 

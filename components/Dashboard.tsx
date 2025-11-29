@@ -188,7 +188,7 @@ export const Dashboard: React.FC = () => {
                 {stats?.recentTransactions.map((tx) => (
                   <tr key={tx.id} className="hover:bg-[#232e3c] transition-colors cursor-default">
                     <td className="p-4 font-medium text-white">{tx.customerName}</td>
-                    <td className="p-4 text-[#4a9c6d] font-bold">R$ {tx.amount.toFixed(2)}</td>
+                    <td className="p-4 text-[#4a9c6d] font-bold">R$ {Number(tx.amount).toFixed(2)}</td>
                     <td className="p-4">
                       <div className="flex items-center gap-2 text-gray-300">
                         <MapPin className="w-3 h-3 text-gray-500" />
