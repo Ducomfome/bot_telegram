@@ -26,6 +26,7 @@ Mídias totalmente +18!
 export const PLANS: Plan[] = [
   { id: 'monthly', name: 'Acesso Mensal 🔞', price: 11.99, label: 'Acesso Mensal 🔞 - por R$ 11,99' },
   { id: 'lifetime', name: 'Acesso Vitalício 🔞', price: 14.99, label: 'Acesso Vitalício 🔞 - por R$ 14,99' },
+  { id: 'whatsapp_vip', name: 'Vitalício + Meu WhatsApp 💚', price: 29.90, label: 'Vitalício + WhatsApp 🟢' },
   { id: 'famous', name: 'Famosinhas 🔞', price: 19.99, label: '🔞Famosinhas 🔞 - por R$ 19,99' },
   { id: 'underworld', name: 'SubMundo 😈 + 15 grupos', price: 23.10, label: 'SubMundo 😈 + 15 grupos 🎁 - por R$ 23,10' },
 ];

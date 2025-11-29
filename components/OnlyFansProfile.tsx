@@ -169,6 +169,7 @@ export const OnlyFansProfile: React.FC = () => {
 
           {/* Cards de Assinatura Estilo Privacy */}
           <div className="space-y-3 mb-6">
+             {/* Plano Mensal */}
              <div className="border border-[#fe2c55]/30 bg-[#fff5f6] p-4 rounded-xl relative overflow-hidden shadow-sm">
                 <div className={`absolute top-0 right-0 ${BRAND_COLOR} text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg`}>
                     MAIS POPULAR
@@ -186,6 +187,7 @@ export const OnlyFansProfile: React.FC = () => {
                 </button>
              </div>
 
+             {/* Plano Vitalício */}
              <div className="border border-gray-200 p-4 rounded-xl shadow-sm hover:border-gray-300 transition-colors">
                 <h3 className="font-bold text-gray-800 text-sm mb-1">VITALÍCIO (SEM MENSALIDADE)</h3>
                  <div className="flex items-baseline gap-1 mb-3">
@@ -199,6 +201,32 @@ export const OnlyFansProfile: React.FC = () => {
                    COMPRAR ACESSO TOTAL
                 </button>
              </div>
+
+             {/* NOVO PLANO: WHATSAPP */}
+             <div className="border border-green-500/50 bg-green-50 p-4 rounded-xl shadow-md relative overflow-hidden">
+                <div className="absolute top-0 right-0 bg-[#25D366] text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg animate-pulse">
+                    SUPER EXCLUSIVO
+                </div>
+                <div className="flex items-center gap-2 mb-1">
+                   <h3 className="font-bold text-gray-800 text-sm">VITALÍCIO + MEU ZAP</h3>
+                   <WhatsAppIcon className="w-5 h-5" />
+                </div>
+                <div className="flex items-baseline gap-1 mb-3">
+                   <span className="text-2xl font-black text-green-700">R$ 29,90</span>
+                   <span className="text-xs text-gray-600">/ único</span>
+                </div>
+                <p className="text-xs text-green-800 mb-3 leading-tight">
+                    🔥 Acesso vitalício + <b>meu número pessoal</b> para a gente conversar de madrugada.
+                </p>
+                <button 
+                   onClick={() => handleSubscribe('whatsapp_vip')}
+                   className="w-full bg-[#25D366] hover:bg-[#1da851] text-white font-bold py-3 rounded-full flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95"
+                >
+                   <WhatsAppIcon className="w-5 h-5 fill-white" />
+                   QUERO O ZAP DELA
+                </button>
+             </div>
+
           </div>
         </div>
 
@@ -306,4 +334,10 @@ export const OnlyFansProfile: React.FC = () => {
 
 const DollarSignIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" x2="12" y1="1" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+);
+
+const WhatsAppIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+        <path d="M12.001 2C6.48 2 2 6.48 2 12c0 1.83.49 3.56 1.34 5.07L2.09 22l5.05-1.29C8.52 21.57 10.21 22 12.001 22c5.52 0 10-4.48 10-10S17.521 2 12.001 2zm5.72 14.65c-.24.67-1.39 1.25-1.91 1.32-.47.07-1.04.18-3.08-.66-1.74-.71-2.98-2.48-3.07-2.6-.09-.12-1.32-1.76-1.32-3.36 0-1.6.83-2.39 1.13-2.71.24-.26.65-.33.91-.33.26 0 .52.01.76.01.24 0 .56-.09.87.66.33.79 1.12 2.7.19 3.39-.93.69.47 1.84.47 1.84s.88 1.45 2.45 2.12c1.57.67 2.05.54 2.37.21.31-.33.69-1.3.88-1.74.19-.44.76-.36 1.27-.19.52.19 3.29 1.55 3.29 1.55s.54.26.79.52c.24.26.24 1.55.01 2.22z"/>
+    </svg>
 );
