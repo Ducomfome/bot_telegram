@@ -4,7 +4,7 @@ import { PaymentModal } from './PaymentModal';
 import { Plan, PixPaymentData, PaymentStatus, UserLocation } from '../types';
 import { MEDIA_URLS, PLANS, SUCCESS_LINK } from '../constants';
 import { createPixTransaction, checkPaymentStatus } from '../services/paymentService';
-import { Verified, MapPin, Link as LinkIcon, Lock, Heart, MessageCircle, Share2, MoreHorizontal, ArrowLeft, Star, Search, Menu } from 'lucide-react';
+import { Verified, MapPin, Link as LinkIcon, Lock, Heart, MessageCircle, Share2, MoreHorizontal, ArrowLeft, Star, Search, Menu, Play } from 'lucide-react';
 
 export const OnlyFansProfile: React.FC = () => {
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
@@ -25,6 +25,50 @@ export const OnlyFansProfile: React.FC = () => {
   const BRAND_COLOR = "bg-[#fe2c55]";
   const TEXT_BRAND = "text-[#fe2c55]";
   const BORDER_BRAND = "border-[#fe2c55]";
+
+  // --- CONFIGURAÇÃO DOS POSTS ---
+  const posts = [
+    {
+      id: 1,
+      type: 'image',
+      url: MEDIA_URLS.PREVIEW_POST, // FOTO SEM CENSURA (PREVIA)
+      isLocked: false, // PÚBLICO
+      description: 'Uma préviazinha do que eu aprontei hoje... Gostaram? 🙈🔥',
+      time: '2 horas',
+      likes: '4.2K',
+      comments: '342'
+    },
+    {
+      id: 2,
+      type: 'video',
+      url: MEDIA_URLS.LOCKED_VIDEO, // VÍDEO CENOURADO
+      isLocked: true, // BLOQUEADO
+      description: 'Vídeo completo na minha cama... esse deu trabalho 🥵🔞',
+      time: 'Ontem',
+      likes: '8.5K',
+      comments: '890'
+    },
+    {
+      id: 3,
+      type: 'image',
+      url: MEDIA_URLS.LOCKED_IMG_1, // FOTO CENSURADA 1
+      isLocked: true, // BLOQUEADO
+      description: 'O que você faria se estivesse aqui comigo agora? 👇',
+      time: '2 dias',
+      likes: '6.1K',
+      comments: '512'
+    },
+    {
+      id: 4,
+      type: 'image',
+      url: MEDIA_URLS.LOCKED_IMG_2, // FOTO CENSURADA 2
+      isLocked: true, // BLOQUEADO
+      description: 'Sem calcinha pela casa... ops 🤭',
+      time: '3 dias',
+      likes: '5.9K',
+      comments: '420'
+    }
+  ];
 
   // --- LÓGICA DE BACKEND (Mantida Intacta) ---
   
@@ -137,15 +181,15 @@ export const OnlyFansProfile: React.FC = () => {
           </div>
         </div>
 
-        {/* Banner */}
+        {/* Banner Atualizado */}
         <div className="h-40 sm:h-48 bg-gray-800 relative group cursor-pointer">
-          <img src={MEDIA_URLS.IMG_1} className="w-full h-full object-cover opacity-80" alt="Banner" />
+          <img src={MEDIA_URLS.BANNER} className="w-full h-full object-cover opacity-90" alt="Banner" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
         </div>
 
         {/* Info Profile */}
         <div className="px-5 relative">
-          {/* Foto de Perfil sobreposta */}
+          {/* Foto de Perfil sobreposta Atualizada */}
           <div className="flex justify-between items-end -mt-10 mb-3">
             <div className="w-24 h-24 rounded-full border-4 border-white overflow-hidden bg-gray-200 shadow-md z-10">
               <img src={MEDIA_URLS.PROFILE_PIC} className="w-full h-full object-cover" alt="Profile" />
@@ -245,7 +289,7 @@ export const OnlyFansProfile: React.FC = () => {
                 onClick={() => setActiveTab('posts')}
                 className={`flex-1 py-3 text-sm font-bold border-b-[3px] transition-colors ${activeTab === 'posts' ? `${BORDER_BRAND} ${TEXT_BRAND}` : 'border-transparent text-gray-400'}`}
             >
-                POSTS (184)
+                POSTS ({posts.length})
             </button>
             <button 
                 onClick={() => setActiveTab('media')}
@@ -257,55 +301,81 @@ export const OnlyFansProfile: React.FC = () => {
 
         {/* Feed de Posts */}
         <div className="bg-[#f0f2f5] min-h-[500px] py-3 space-y-3">
-            {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="bg-white p-4 shadow-sm border-y border-gray-100 sm:border sm:rounded-lg sm:mx-2">
+            {posts.map((post) => (
+                <div key={post.id} className="bg-white p-4 shadow-sm border-y border-gray-100 sm:border sm:rounded-lg sm:mx-2">
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                             <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden border border-gray-100">
-                                <img src={MEDIA_URLS.PROFILE_PIC} className="w-full h-full object-cover" />
+                                <img src={MEDIA_URLS.PROFILE_PIC} className="w-full h-full object-cover" alt="Profile" />
                             </div>
                             <div>
                                 <h4 className="font-bold text-sm text-gray-900 flex items-center gap-1">
                                     Safadinha 😈 <Verified className={`w-3 h-3 ${TEXT_BRAND}`} />
                                 </h4>
-                                <span className="text-xs text-gray-400">Há {i} horas • Público</span>
+                                <span className="text-xs text-gray-400">Há {post.time} • {post.isLocked ? 'Assinantes' : 'Público'}</span>
                             </div>
                         </div>
                         <MoreHorizontal className="w-5 h-5 text-gray-400 cursor-pointer" />
                     </div>
                     <p className="text-sm text-gray-800 mb-3 font-normal">
-                        Uma prévia do que postei no VIP hoje... quem assinar vai ver tudo sem censura! 🔥👀
+                        {post.description}
                     </p>
                     
-                    {/* Conteúdo Bloqueado Estilo Privacy */}
+                    {/* Conteúdo do Post (Bloqueado ou Público) */}
                     <div 
-                        onClick={scrollToPlans}
-                        className="relative w-full aspect-[3/4] bg-gray-900 rounded-lg overflow-hidden cursor-pointer group"
+                        onClick={post.isLocked ? scrollToPlans : undefined}
+                        className={`relative w-full aspect-[3/4] bg-gray-900 rounded-lg overflow-hidden ${post.isLocked ? 'cursor-pointer group' : ''}`}
                     >
-                        <img 
-                            src={i % 2 === 0 ? MEDIA_URLS.IMG_1 : MEDIA_URLS.IMG_2} 
-                            className="w-full h-full object-cover opacity-20 blur-2xl scale-105 transition-transform duration-700" 
-                        />
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-4 text-center">
-                            <div className={`w-14 h-14 ${BRAND_COLOR} rounded-full flex items-center justify-center mb-3 shadow-lg group-hover:scale-110 transition-transform`}>
-                                <Lock className="w-7 h-7 text-white" />
+                        {/* Se for vídeo e bloqueado, renderiza tag video borrada */}
+                        {post.type === 'video' ? (
+                            <video 
+                                src={post.url} 
+                                className={`w-full h-full object-cover ${post.isLocked ? 'opacity-20 blur-2xl scale-105 transition-transform duration-700' : ''}`}
+                                autoPlay={false} // Não dar autoplay se for preview bloqueado
+                                muted
+                                loop
+                                playsInline
+                            />
+                        ) : (
+                            <img 
+                                src={post.url} 
+                                className={`w-full h-full object-cover ${post.isLocked ? 'opacity-20 blur-2xl scale-105 transition-transform duration-700' : ''}`} 
+                                alt="Post"
+                            />
+                        )}
+
+                        {/* Overlay de Cadeado se estiver bloqueado */}
+                        {post.isLocked && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-4 text-center">
+                                <div className={`w-14 h-14 ${BRAND_COLOR} rounded-full flex items-center justify-center mb-3 shadow-lg group-hover:scale-110 transition-transform`}>
+                                    <Lock className="w-7 h-7 text-white" />
+                                </div>
+                                <h3 className="font-bold text-lg uppercase tracking-wide">Conteúdo Exclusivo</h3>
+                                <p className="text-xs text-gray-300 mt-1 max-w-[200px]">
+                                    Assine este perfil para desbloquear essa mídia e todo o arquivo.
+                                </p>
                             </div>
-                            <h3 className="font-bold text-lg uppercase tracking-wide">Conteúdo Exclusivo</h3>
-                            <p className="text-xs text-gray-300 mt-1 max-w-[200px]">
-                                Assine este perfil para desbloquear essa mídia e todo o arquivo.
-                            </p>
-                        </div>
+                        )}
+                        
+                        {/* Indicador de Vídeo se for público */}
+                        {!post.isLocked && post.type === 'video' && (
+                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <div className="bg-black/40 p-3 rounded-full backdrop-blur-sm">
+                                <Play className="w-8 h-8 text-white fill-white" />
+                              </div>
+                           </div>
+                        )}
                     </div>
 
                     <div className="flex items-center justify-between pt-3 mt-2 text-gray-500">
                         <div className="flex gap-4">
                             <div className="flex items-center gap-1 cursor-pointer hover:text-[#fe2c55]">
-                                <Heart className="w-6 h-6" />
-                                <span className="text-xs font-bold">2.4K</span>
+                                <Heart className={`w-6 h-6 ${!post.isLocked ? 'text-red-500 fill-current' : ''}`} />
+                                <span className="text-xs font-bold">{post.likes}</span>
                             </div>
                             <div className="flex items-center gap-1 cursor-pointer hover:text-gray-800">
                                 <MessageCircle className="w-6 h-6" />
-                                <span className="text-xs font-bold">142</span>
+                                <span className="text-xs font-bold">{post.comments}</span>
                             </div>
                         </div>
                         <div className="flex items-center gap-1 cursor-pointer hover:text-[#fe2c55]">

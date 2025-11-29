@@ -3,10 +3,22 @@ import { Plan } from './types';
 
 // Client-side constants (Secrets are now handled in /api/ folder securely)
 export const MEDIA_URLS = {
-  IMG_1: 'https://pub-9ad786fb39ec4b43b2905a55edcb38d9.r2.dev/img01_bot.jpg',
-  VIDEO_1: 'https://pub-9ad786fb39ec4b43b2905a55edcb38d9.r2.dev/video01_bot.mp4',
-  IMG_2: 'https://pub-9ad786fb39ec4b43b2905a55edcb38d9.r2.dev/img02_bot.jpg',
-  PROFILE_PIC: 'https://pub-9ad786fb39ec4b43b2905a55edcb38d9.r2.dev/download%20(2).jpg'
+  // Perfil e Banner
+  PROFILE_PIC: 'https://pub-9ad786fb39ec4b43b2905a55edcb38d9.r2.dev/avatar.jpg',
+  BANNER: 'https://pub-9ad786fb39ec4b43b2905a55edcb38d9.r2.dev/banner.jpg',
+  
+  // Mídia Pública (Sem censura - Prévia)
+  PREVIEW_POST: 'https://pub-9ad786fb39ec4b43b2905a55edcb38d9.r2.dev/fotoquenvaificarcensurada.jpg',
+  
+  // Mídias Bloqueadas (Censuradas)
+  LOCKED_IMG_1: 'https://pub-9ad786fb39ec4b43b2905a55edcb38d9.r2.dev/fotocensurada.jpg',
+  LOCKED_IMG_2: 'https://pub-9ad786fb39ec4b43b2905a55edcb38d9.r2.dev/fotocensurada01.jpg',
+  LOCKED_VIDEO: 'https://pub-9ad786fb39ec4b43b2905a55edcb38d9.r2.dev/fotocensurada02.mp4',
+
+  // Legado (Mantido para compatibilidade se necessário)
+  IMG_1: 'https://pub-9ad786fb39ec4b43b2905a55edcb38d9.r2.dev/fotoquenvaificarcensurada.jpg',
+  VIDEO_1: 'https://pub-9ad786fb39ec4b43b2905a55edcb38d9.r2.dev/fotocensurada02.mp4',
+  IMG_2: 'https://pub-9ad786fb39ec4b43b2905a55edcb38d9.r2.dev/fotocensurada.jpg',
 };
 
 export const SALES_COPY = `🔞 𝐒𝐔𝐀 𝐆𝐎𝐙𝐀𝐃𝐀 𝐆𝐀𝐑𝐀𝐍𝐓𝐈𝐃𝐀 𝐎𝐔 𝐒𝐄𝐔 𝐃𝐈𝐍𝐇𝐄𝐈𝐑𝐎 𝐃𝐄 𝐕𝐎𝐋𝐓𝐀 ❤️‍🔥
