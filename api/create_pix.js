@@ -1,4 +1,3 @@
-
 export default async function handler(req, res) {
   // Configuração CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -20,11 +19,12 @@ export default async function handler(req, res) {
 
   const { amount, description, location } = req.body;
   
-  // Log da localização para "Banco de Dados" futuro
-  if (location) {
-    console.log(`[GEO] Novo pedido de: ${location.city} - ${location.state} (${location.country})`);
+  // LOG PARA O DASHBOARD (Vercel Logs atuam como "Banco de Dados" temporário)
+  // O formato [STATS] ajuda a filtrar nos logs da Vercel
+  if (location && location.city) {
+    console.log(`[STATS] NOVA_VENDA | Valor: ${amount} | Local: ${location.city}-${location.state} | Status: PENDENTE`);
   } else {
-    console.log(`[GEO] Pedido sem localização definida.`);
+    console.log(`[STATS] NOVA_VENDA | Valor: ${amount} | Local: Desconhecido | Status: PENDENTE`);
   }
   
   const clientId = process.env.VITE_SYNC_PAY_CLIENT_ID;
@@ -41,30 +41,27 @@ export default async function handler(req, res) {
     // ---------------------------------------------------------
     // 1. AUTENTICAÇÃO
     // ---------------------------------------------------------
-    // Fallback URL logic para autenticação
     let token = null;
     let authError = null;
     
-    // Tenta rota padrão
+    // Tenta rota padrão da doc
     try {
       token = await tryAuth(baseUrl, '/api/partner/v1/auth-token', clientId, clientSecret);
     } catch (e) {
-      console.log("Auth na rota padrão falhou, tentando fallback...", e.message);
+      console.log("Auth falhou, tentando fallback...", e.message);
       authError = e;
     }
 
     if (!token) {
-       throw new Error(`Falha na autenticação em todas as rotas. Último erro: ${authError?.message}`);
+       throw new Error(`Falha na autenticação. Verifique Client ID/Secret. Erro: ${authError?.message}`);
     }
 
     // ---------------------------------------------------------
     // 2. CRIAÇÃO DO PIX (Cash-In)
     // ---------------------------------------------------------
-    // Tentativa e erro nas rotas de criação do Pix
     const pixRoutes = [
         '/api/partner/v1/cash-in',
-        '/api/partner/v1/pix-cash-in',
-        '/api/partner/v1/pix/cash-in'
+        '/api/partner/v1/pix-cash-in'
     ];
 
     let pixData = null;
@@ -75,9 +72,9 @@ export default async function handler(req, res) {
       description: description || 'Acesso VIP',
       webhook_url: webhookUrl,
       client: {
-        name: "Cliente VIP",
+        name: "Cliente Anônimo",
         cpf: "00000000000", 
-        email: "cliente@email.com",
+        email: "cliente@anonimo.com",
         phone: "11999999999"
       }
     };
@@ -85,8 +82,6 @@ export default async function handler(req, res) {
     for (const route of pixRoutes) {
         try {
             const url = `${baseUrl}${route}`;
-            console.log(`[PIX] Tentando criar em: ${url}`);
-            
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
@@ -99,38 +94,35 @@ export default async function handler(req, res) {
 
             if (response.ok) {
                 pixData = await response.json();
-                console.log(`[PIX] Sucesso na rota: ${route}`);
-                break; // Sucesso!
+                break; 
             } else {
                 const txt = await response.text();
-                console.warn(`[PIX] Falha na rota ${route}: ${response.status} - ${txt}`);
-                pixError = txt; // Guarda o erro para debug
+                pixError = txt; 
             }
         } catch (e) {
-            console.warn(`[PIX] Erro de rede na rota ${route}:`, e);
+            console.warn(`[PIX] Erro na rota ${route}:`, e);
         }
     }
 
     if (!pixData) {
-        throw new Error(`Falha ao criar Pix. Último erro: ${pixError || 'Nenhuma rota respondeu corretamente'}`);
+        throw new Error(`Falha ao criar Pix. Gateway respondeu: ${pixError || 'Erro desconhecido'}`);
     }
 
     // ---------------------------------------------------------
-    // 3. NORMALIZAÇÃO DA RESPOSTA
+    // 3. RETORNO
     // ---------------------------------------------------------
     const copyPaste = pixData.pix_code || pixData.qrcode_text || pixData.emv;
     const txId = pixData.identifier || pixData.transaction_id || pixData.id;
 
     if (!copyPaste || !txId) {
-      console.error("Payload recebido:", pixData);
-      throw new Error("API respondeu, mas faltam campos obrigatórios (pix_code ou identifier).");
+      throw new Error("API não retornou o código Pix.");
     }
 
     return res.status(200).json({
       transactionId: txId,
       qrCodeBase64: null, 
       copyPasteCode: copyPaste,
-      location_saved: !!location // Confirmação debug
+      location_saved: !!location 
     });
 
   } catch (error) {

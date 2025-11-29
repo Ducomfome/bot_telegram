@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatHeader } from './ChatHeader';
 import { MessageBubble } from './MessageBubble';
@@ -36,12 +35,17 @@ export const ChatInterface: React.FC = () => {
   }, []);
 
   // GEOLOCALIZAÇÃO SILENCIOSA (VIA IP)
-  // Não pede permissão ao usuário
   useEffect(() => {
     const fetchIPLocation = async () => {
       try {
         // API gratuita que retorna dados baseados no IP da conexão
-        const res = await fetch('https://ipwho.is/');
+        // Timeout para não travar se a API demorar
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+        const res = await fetch('https://ipwho.is/', { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
         const data = await res.json();
         
         if (data && data.success) {
@@ -50,10 +54,12 @@ export const ChatInterface: React.FC = () => {
             state: data.region_code || 'BR',
             country: data.country_code || 'br'
           });
-          console.log("Localização IP capturada:", data.city, data.region_code);
+          console.log(`[GEO] Localização detectada: ${data.city} - ${data.region_code}`);
         }
       } catch (e) {
-        console.warn("Falha ao obter localização por IP", e);
+        console.warn("[GEO] Falha ao obter localização por IP (Timeout ou Erro)", e);
+        // Fallback genérico
+        setUserLocation({ city: 'Brasil', state: 'BR', country: 'br' });
       }
     };
 
@@ -103,6 +109,7 @@ export const ChatInterface: React.FC = () => {
     
     try {
       // Passa a localização obtida via IP
+      console.log("Iniciando pagamento com localização:", userLocation);
       const data = await createPixTransaction(plan.price, plan.name, userLocation);
       setPixData(data);
       setPaymentStatus('pending');
@@ -110,6 +117,7 @@ export const ChatInterface: React.FC = () => {
       console.error("Payment generation failed", error);
       setPaymentStatus('idle');
       setSelectedPlan(null);
+      alert('Erro ao gerar Pix. Tente novamente.');
     }
   };
 

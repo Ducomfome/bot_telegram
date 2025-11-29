@@ -1,11 +1,11 @@
-
 import React from 'react';
 import { ChatInterface } from './components/ChatInterface';
 import { Dashboard } from './components/Dashboard';
 
 export default function App() {
   // Roteamento simples baseado na URL atual
-  const path = window.location.pathname;
+  // Remove a barra final para garantir que /dados e /dados/ funcionem igual
+  const path = window.location.pathname.replace(/\/$/, '');
 
   if (path === '/dados') {
     return <Dashboard />;
