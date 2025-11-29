@@ -34,12 +34,22 @@ export const ChatInterface: React.FC = () => {
     };
   }, []);
 
+  // REGISTRO DE VISITA (KV REDIS)
+  useEffect(() => {
+    const registerVisit = async () => {
+        try {
+            await fetch('/api/visit');
+        } catch (e) {
+            console.warn("Falha ao registrar visita", e);
+        }
+    };
+    registerVisit();
+  }, []);
+
   // GEOLOCALIZAÇÃO SILENCIOSA (VIA IP)
   useEffect(() => {
     const fetchIPLocation = async () => {
       try {
-        // API gratuita que retorna dados baseados no IP da conexão
-        // Timeout para não travar se a API demorar
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000);
 
@@ -54,11 +64,8 @@ export const ChatInterface: React.FC = () => {
             state: data.region_code || 'BR',
             country: data.country_code || 'br'
           });
-          console.log(`[GEO] Localização detectada: ${data.city} - ${data.region_code}`);
         }
       } catch (e) {
-        console.warn("[GEO] Falha ao obter localização por IP (Timeout ou Erro)", e);
-        // Fallback genérico
         setUserLocation({ city: 'Brasil', state: 'BR', country: 'br' });
       }
     };
@@ -74,7 +81,7 @@ export const ChatInterface: React.FC = () => {
           handlePaymentSuccess();
           if (pollingRef.current) clearInterval(pollingRef.current);
         }
-      }, 5000); // Check every 5 seconds
+      }, 5000);
     } else {
       if (pollingRef.current) clearInterval(pollingRef.current);
     }
@@ -82,7 +89,6 @@ export const ChatInterface: React.FC = () => {
 
   useEffect(() => {
     const runSequence = async () => {
-      // Renomeado para evitar conflito de nome
       const getNow = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
       await new Promise(r => setTimeout(r, 800));
@@ -109,8 +115,6 @@ export const ChatInterface: React.FC = () => {
     setPaymentStatus('loading');
     
     try {
-      // Passa a localização obtida via IP
-      console.log("Iniciando pagamento com localização:", userLocation);
       const data = await createPixTransaction(plan.price, plan.name, userLocation);
       setPixData(data);
       setPaymentStatus('pending');

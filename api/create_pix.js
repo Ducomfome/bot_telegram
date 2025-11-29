@@ -1,3 +1,5 @@
+import { kv } from '@vercel/kv';
+
 export default async function handler(req, res) {
   // Configuração CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -19,14 +21,6 @@ export default async function handler(req, res) {
 
   const { amount, description, location } = req.body;
   
-  // LOG PARA O DASHBOARD (Vercel Logs atuam como "Banco de Dados" temporário)
-  // O formato [STATS] ajuda a filtrar nos logs da Vercel
-  if (location && location.city) {
-    console.log(`[STATS] NOVA_VENDA | Valor: ${amount} | Local: ${location.city}-${location.state} | Status: PENDENTE`);
-  } else {
-    console.log(`[STATS] NOVA_VENDA | Valor: ${amount} | Local: Desconhecido | Status: PENDENTE`);
-  }
-  
   const clientId = process.env.VITE_SYNC_PAY_CLIENT_ID;
   const clientSecret = process.env.VITE_SYNC_PAY_CLIENT_SECRET;
   const rawBaseUrl = process.env.VITE_SYNC_PAY_BASE_URL || 'https://api.syncpayments.com.br';
@@ -38,32 +32,26 @@ export default async function handler(req, res) {
   }
 
   try {
-    // ---------------------------------------------------------
     // 1. AUTENTICAÇÃO
-    // ---------------------------------------------------------
     let token = null;
-    let authError = null;
-    
-    // Tenta rota padrão da doc
     try {
-      token = await tryAuth(baseUrl, '/api/partner/v1/auth-token', clientId, clientSecret);
+        const authUrl = `${baseUrl}/api/partner/v1/auth-token`;
+        const authResponse = await fetch(authUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ client_id: clientId, client_secret: clientSecret })
+        });
+        if (!authResponse.ok) throw new Error('Auth Failed');
+        const authData = await authResponse.json();
+        token = authData.access_token;
     } catch (e) {
-      console.log("Auth falhou, tentando fallback...", e.message);
-      authError = e;
+        console.error("Auth Error:", e);
+        throw new Error("Falha na autenticação com gateway.");
     }
 
-    if (!token) {
-       throw new Error(`Falha na autenticação. Verifique Client ID/Secret. Erro: ${authError?.message}`);
-    }
-
-    // ---------------------------------------------------------
-    // 2. CRIAÇÃO DO PIX (Cash-In)
-    // ---------------------------------------------------------
-    const pixRoutes = [
-        '/api/partner/v1/cash-in',
-        '/api/partner/v1/pix-cash-in'
-    ];
-
+    // 2. CRIAÇÃO DO PIX
+    // Tenta rotas comuns
+    const pixRoutes = ['/api/partner/v1/cash-in', '/api/partner/v1/pix-cash-in'];
     let pixData = null;
     let pixError = null;
 
@@ -96,26 +84,45 @@ export default async function handler(req, res) {
                 pixData = await response.json();
                 break; 
             } else {
-                const txt = await response.text();
-                pixError = txt; 
+                pixError = await response.text();
             }
         } catch (e) {
-            console.warn(`[PIX] Erro na rota ${route}:`, e);
+            console.warn(`Rota ${route} falhou.`);
         }
     }
 
     if (!pixData) {
-        throw new Error(`Falha ao criar Pix. Gateway respondeu: ${pixError || 'Erro desconhecido'}`);
+        throw new Error(`Falha ao criar Pix: ${pixError || 'Erro desconhecido'}`);
     }
 
-    // ---------------------------------------------------------
-    // 3. RETORNO
-    // ---------------------------------------------------------
     const copyPaste = pixData.pix_code || pixData.qrcode_text || pixData.emv;
     const txId = pixData.identifier || pixData.transaction_id || pixData.id;
 
     if (!copyPaste || !txId) {
       throw new Error("API não retornou o código Pix.");
+    }
+
+    // 3. SALVAR NO BANCO DE DADOS (Redis)
+    try {
+        const txRecord = {
+            id: txId,
+            amount: amount,
+            status: 'pending',
+            date: new Date().toLocaleDateString('pt-BR'),
+            timestamp: Date.now(),
+            customerName: 'Cliente Anônimo',
+            location: location ? `${location.city} - ${location.state}` : 'Desconhecido'
+        };
+
+        // Salva a transação individualmente
+        await kv.hset(`tx:${txId}`, txRecord);
+        // Opcional: Adicionar a uma lista de IDs para facilitar a busca (se não quiser usar KEYS)
+        // await kv.lpush('transactions_list', txId);
+        
+        console.log(`[DB] Transação ${txId} salva como pendente.`);
+    } catch (dbError) {
+        console.error("Erro ao salvar no Redis:", dbError);
+        // Não falha a requisição se o banco falhar, o usuário ainda quer o Pix
     }
 
     return res.status(200).json({
@@ -129,23 +136,4 @@ export default async function handler(req, res) {
     console.error('API Handler Error:', error);
     return res.status(500).json({ error: error.message });
   }
-}
-
-async function tryAuth(baseUrl, path, clientId, clientSecret) {
-    const url = `${baseUrl}${path}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        client_id: clientId,
-        client_secret: clientSecret
-      })
-    });
-
-    if (!response.ok) throw new Error(`Status ${response.status}`);
-    const data = await response.json();
-    return data.access_token;
 }
