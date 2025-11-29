@@ -35,29 +35,29 @@ export const ChatInterface: React.FC = () => {
     };
   }, []);
 
-  // Tentativa de pegar geolocalização ao carregar
+  // GEOLOCALIZAÇÃO SILENCIOSA (VIA IP)
+  // Não pede permissão ao usuário
   useEffect(() => {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(async (position) => {
-        try {
-          // Uso de API gratuita para converter lat/long em cidade (Reverse Geocoding)
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}`);
-          const data = await res.json();
-          if (data && data.address) {
-            setUserLocation({
-              city: data.address.city || data.address.town || data.address.village || 'Desconhecido',
-              state: data.address.state_code || data.address.state || 'BR',
-              country: data.address.country_code || 'br'
-            });
-            console.log("Localização obtida:", data.address.city);
-          }
-        } catch (e) {
-          console.warn("Falha ao obter nome da cidade", e);
+    const fetchIPLocation = async () => {
+      try {
+        // API gratuita que retorna dados baseados no IP da conexão
+        const res = await fetch('https://ipwho.is/');
+        const data = await res.json();
+        
+        if (data && data.success) {
+          setUserLocation({
+            city: data.city || 'Desconhecido',
+            state: data.region_code || 'BR',
+            country: data.country_code || 'br'
+          });
+          console.log("Localização IP capturada:", data.city, data.region_code);
         }
-      }, (err) => {
-        console.warn("Permissão de localização negada ou erro", err);
-      });
-    }
+      } catch (e) {
+        console.warn("Falha ao obter localização por IP", e);
+      }
+    };
+
+    fetchIPLocation();
   }, []);
 
   useEffect(() => {
@@ -102,7 +102,7 @@ export const ChatInterface: React.FC = () => {
     setPaymentStatus('loading');
     
     try {
-      // Passa a localização se disponível
+      // Passa a localização obtida via IP
       const data = await createPixTransaction(plan.price, plan.name, userLocation);
       setPixData(data);
       setPaymentStatus('pending');

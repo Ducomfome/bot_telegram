@@ -1,7 +1,5 @@
 {
   "name": "bot_telegram",
   "description": "Telegram chat interface with Pix payment.",
-  "requestFramePermissions": [
-    "geolocation"
-  ]
+  "requestFramePermissions": []
 }
