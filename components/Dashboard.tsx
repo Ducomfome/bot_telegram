@@ -32,6 +32,50 @@ export const Dashboard: React.FC = () => {
     setLoading(false);
   };
 
+  // Helper para calcular porcentagens e gradiente dinâmico
+  const getPieData = () => {
+    if (!stats) return { 
+      gradient: 'conic-gradient(#374151 0% 100%)', 
+      percentages: { paid: 0, pending: 0, failed: 0 },
+      counts: { paid: 0, pending: 0, failed: 0 }
+    };
+
+    const paid = stats.statusDistribution.find(d => d.status === 'Pago')?.count || 0;
+    const pending = stats.statusDistribution.find(d => d.status === 'Pendente')?.count || 0;
+    const failed = stats.statusDistribution.find(d => d.status === 'Falha')?.count || 0;
+    const total = paid + pending + failed;
+
+    if (total === 0) return {
+      gradient: 'conic-gradient(#374151 0% 100%)',
+      percentages: { paid: 0, pending: 0, failed: 0 },
+      counts: { paid: 0, pending: 0, failed: 0 }
+    };
+
+    const paidPerc = (paid / total) * 100;
+    const pendingPerc = (pending / total) * 100;
+    const failedPerc = (failed / total) * 100;
+
+    // Calcula os pontos de parada do gradiente
+    const p1 = paidPerc;
+    const p2 = paidPerc + pendingPerc;
+
+    return {
+      gradient: `conic-gradient(
+        #4ade80 0% ${p1}%, 
+        #facc15 ${p1}% ${p2}%, 
+        #ef4444 ${p2}% 100%
+      )`,
+      percentages: {
+        paid: Math.round(paidPerc),
+        pending: Math.round(pendingPerc),
+        failed: Math.round(failedPerc)
+      },
+      counts: { paid, pending, failed }
+    };
+  };
+
+  const pieData = getPieData();
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#0e1621] flex items-center justify-center p-4 font-sans">
@@ -78,7 +122,7 @@ export const Dashboard: React.FC = () => {
               <DollarSign className="w-4 h-4 text-[#4a9c6d]" /> Faturamento
             </div>
             <div className="text-2xl font-bold text-[#4a9c6d]">
-              R$ {stats?.totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              R$ {Number(stats?.totalRevenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
           </div>
           <div className="bg-[#1c2732] p-4 rounded-xl border border-[#2b5278] shadow-lg">
@@ -86,7 +130,7 @@ export const Dashboard: React.FC = () => {
               <Users className="w-4 h-4 text-blue-400" /> Visitantes
             </div>
             <div className="text-2xl font-bold text-blue-400">
-              {stats?.totalVisitors}
+              {stats?.totalVisitors || 0}
             </div>
           </div>
           <div className="bg-[#1c2732] p-4 rounded-xl border border-[#2b5278] shadow-lg">
@@ -94,7 +138,7 @@ export const Dashboard: React.FC = () => {
               <TrendingUp className="w-4 h-4 text-purple-400" /> Conversão
             </div>
             <div className="text-2xl font-bold text-purple-400">
-              {stats?.conversionRate}%
+              {stats?.conversionRate || 0}%
             </div>
           </div>
           <div className="bg-[#1c2732] p-4 rounded-xl border border-[#2b5278] shadow-lg">
@@ -102,7 +146,7 @@ export const Dashboard: React.FC = () => {
               <Activity className="w-4 h-4 text-yellow-400" /> Online
             </div>
             <div className="text-2xl font-bold text-yellow-400 animate-pulse">
-              {stats?.activeUsers}
+              {stats?.activeUsers || 0}
             </div>
           </div>
         </div>
@@ -117,7 +161,7 @@ export const Dashboard: React.FC = () => {
                 <div key={idx} className="flex flex-col items-center flex-1 h-full justify-end gap-2 group cursor-pointer">
                   <div 
                     className="w-full bg-[#4a9c6d] rounded-t hover:bg-[#5bb582] transition-all relative shadow-[0_0_10px_rgba(74,156,109,0.3)]"
-                    style={{ height: `${(item.value / 1500) * 100}%`, minHeight: '6px' }}
+                    style={{ height: `${Math.min((item.value / (Math.max(...stats.salesByDay.map(s => s.value), 100))) * 100, 100)}%`, minHeight: '6px' }}
                   >
                      <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 pointer-events-none">
                         R$ {item.value}
@@ -126,6 +170,11 @@ export const Dashboard: React.FC = () => {
                   <span className="text-[10px] text-gray-400 font-medium">{item.day}</span>
                 </div>
               ))}
+              {(!stats?.salesByDay || stats.salesByDay.length === 0) && (
+                 <div className="w-full h-full flex items-center justify-center text-gray-500 text-sm">
+                    Sem dados recentes
+                 </div>
+              )}
             </div>
           </div>
 
@@ -139,11 +188,7 @@ export const Dashboard: React.FC = () => {
                     width: '140px',
                     height: '140px',
                     borderRadius: '50%',
-                    background: `conic-gradient(
-                      #4ade80 0% 65%, 
-                      #facc15 65% 90%, 
-                      #ef4444 90% 100%
-                    )`
+                    background: pieData.gradient
                   } as React.CSSProperties}
                 >
                   <div className="absolute inset-0 m-auto bg-[#1c2732] rounded-full w-[60%] h-[60%] flex items-center justify-center">
@@ -153,15 +198,15 @@ export const Dashboard: React.FC = () => {
                 <div className="flex flex-col gap-3 text-sm">
                    <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-[#4ade80] rounded-full shadow-[0_0_8px_#4ade80]"></div> 
-                      <span className="text-gray-300">Pago (65%)</span>
+                      <span className="text-gray-300">Pago ({pieData.percentages.paid}%) <span className='text-xs text-gray-500'>[{pieData.counts.paid}]</span></span>
                    </div>
                    <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-[#facc15] rounded-full shadow-[0_0_8px_#facc15]"></div> 
-                      <span className="text-gray-300">Pendente (25%)</span>
+                      <span className="text-gray-300">Pendente ({pieData.percentages.pending}%) <span className='text-xs text-gray-500'>[{pieData.counts.pending}]</span></span>
                    </div>
                    <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-[#ef4444] rounded-full shadow-[0_0_8px_#ef4444]"></div> 
-                      <span className="text-gray-300">Falha (10%)</span>
+                      <span className="text-gray-300">Falha ({pieData.percentages.failed}%) <span className='text-xs text-gray-500'>[{pieData.counts.failed}]</span></span>
                    </div>
                 </div>
              </div>
@@ -188,7 +233,7 @@ export const Dashboard: React.FC = () => {
                 {stats?.recentTransactions.map((tx) => (
                   <tr key={tx.id} className="hover:bg-[#232e3c] transition-colors cursor-default">
                     <td className="p-4 font-medium text-white">{tx.customerName}</td>
-                    <td className="p-4 text-[#4a9c6d] font-bold">R$ {Number(tx.amount).toFixed(2)}</td>
+                    <td className="p-4 text-[#4a9c6d] font-bold">R$ {Number(tx.amount || 0).toFixed(2)}</td>
                     <td className="p-4">
                       <div className="flex items-center gap-2 text-gray-300">
                         <MapPin className="w-3 h-3 text-gray-500" />
