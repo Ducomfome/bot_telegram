@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { fetchDashboardStats } from '../services/analyticsService';
 import { DashboardStats } from '../types';
-import { Users, DollarSign, TrendingUp, Activity, MapPin, RefreshCw, LogOut } from 'lucide-react';
+import { Users, DollarSign, TrendingUp, Activity, MapPin, RefreshCw, LogOut, Lock } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
