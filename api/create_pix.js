@@ -1,7 +1,7 @@
+
 import { kv } from '@vercel/kv';
 
 export default async function handler(req, res) {
-  // Configuração CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
@@ -50,7 +50,6 @@ export default async function handler(req, res) {
     }
 
     // 2. CRIAÇÃO DO PIX
-    // Tenta rotas comuns
     const pixRoutes = ['/api/partner/v1/cash-in', '/api/partner/v1/pix-cash-in'];
     let pixData = null;
     let pixError = null;
@@ -114,15 +113,15 @@ export default async function handler(req, res) {
             location: location ? `${location.city} - ${location.state}` : 'Desconhecido'
         };
 
-        // Salva a transação individualmente
+        // Salva os detalhes
         await kv.hset(`tx:${txId}`, txRecord);
-        // Opcional: Adicionar a uma lista de IDs para facilitar a busca (se não quiser usar KEYS)
-        // await kv.lpush('transactions_list', txId);
         
-        console.log(`[DB] Transação ${txId} salva como pendente.`);
+        // ADIÇÃO CRÍTICA: Salva na lista de transações para garantir que o dashboard encontre
+        await kv.lpush('transactions_list', `tx:${txId}`);
+        
+        console.log(`[DB] Transação ${txId} salva.`);
     } catch (dbError) {
         console.error("Erro ao salvar no Redis:", dbError);
-        // Não falha a requisição se o banco falhar, o usuário ainda quer o Pix
     }
 
     return res.status(200).json({

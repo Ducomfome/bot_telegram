@@ -1,3 +1,4 @@
+
 import { kv } from '@vercel/kv';
 
 export default async function handler(req, res) {
@@ -11,86 +12,98 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Buscar Visitantes
+    // 1. Buscar Visitantes (Total Histórico)
     const visitors = await kv.get('site_visitors') || 0;
 
-    // 2. Buscar Transações
-    // Nota: 'keys' pode ser lento se houver milhões de registros, mas para um bot simples é ok.
-    // Em produção de alta escala, usaríamos uma lista (LPUSH) para armazenar IDs.
-    const keys = await kv.keys('tx:*');
-    let transactions = [];
+    // 2. Buscar Usuários Online (Heartbeats ativos)
+    // Keys não é o ideal para produção massiva, mas para dashboard admin funciona bem
+    const onlineKeys = await kv.keys('online:*');
+    const activeUsers = onlineKeys.length;
 
-    if (keys.length > 0) {
-        // Pipeline para buscar todos os dados de uma vez
-        const pipeline = kv.pipeline();
-        keys.forEach(key => pipeline.hgetall(key));
-        transactions = await pipeline.exec();
+    // 3. Buscar Transações
+    // Tenta buscar da lista organizada primeiro
+    let txKeys = await kv.lrange('transactions_list', 0, -1);
+    
+    // Fallback: se a lista estiver vazia (legado), tenta buscar por padrão de chave
+    if (!txKeys || txKeys.length === 0) {
+       txKeys = await kv.keys('tx:*');
     }
 
-    // 3. Processar Estatísticas
+    let transactions = [];
+
+    if (txKeys && txKeys.length > 0) {
+        const pipeline = kv.pipeline();
+        // Garante que só chaves únicas sejam buscadas (remove duplicatas)
+        const uniqueKeys = [...new Set(txKeys)];
+        
+        uniqueKeys.forEach(key => pipeline.hgetall(key));
+        const results = await pipeline.exec();
+        
+        // FILTRAGEM CRÍTICA: Remove nulos para evitar Crash 500
+        transactions = results.filter(tx => tx !== null && tx.amount !== undefined);
+    }
+
+    // 4. Processar Estatísticas
     let totalRevenue = 0;
     let paidCount = 0;
     let pendingCount = 0;
     let failedCount = 0;
     const salesByDayMap = {};
 
-    // Ordenar por data (mais recente primeiro)
-    transactions.sort((a, b) => b.timestamp - a.timestamp);
+    // Ordenar: Mais recente primeiro
+    transactions.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
     transactions.forEach(tx => {
-        if (!tx) return;
         const amount = parseFloat(tx.amount || 0);
+        const status = (tx.status || 'pending').toLowerCase();
         
-        if (tx.status === 'paid') {
+        if (status === 'paid') {
             totalRevenue += amount;
             paidCount++;
             
             // Agrupar vendas por dia
-            // Formato da data salva: DD/MM/AAAA (pt-BR)
-            const dayParts = tx.date.split('/');
-            // Pega apenas o dia e mês para o gráfico (ex: "15/03")
-            const shortDate = `${dayParts[0]}/${dayParts[1]}`;
-            
-            if (!salesByDayMap[shortDate]) salesByDayMap[shortDate] = 0;
-            salesByDayMap[shortDate] += amount;
-        } else if (tx.status === 'pending') {
+            if (tx.date) {
+                const dayParts = tx.date.split('/');
+                if (dayParts.length >= 2) {
+                    const shortDate = `${dayParts[0]}/${dayParts[1]}`;
+                    if (!salesByDayMap[shortDate]) salesByDayMap[shortDate] = 0;
+                    salesByDayMap[shortDate] += amount;
+                }
+            }
+        } else if (status === 'pending') {
             pendingCount++;
         } else {
             failedCount++;
         }
     });
 
-    // Formatar Sales By Day para o gráfico (últimos 7 dias ou o que tiver)
     const salesByDay = Object.keys(salesByDayMap).map(day => ({
         day,
         value: salesByDayMap[day]
-    })).slice(-7); // Pega os últimos 7
+    })).slice(-7); 
 
-    // Calcular conversão
     const conversionRate = visitors > 0 ? ((paidCount / visitors) * 100).toFixed(1) : 0;
-    // Usuários ativos (simulação baseada em pendentes recentes)
-    const activeUsers = pendingCount > 0 ? pendingCount + Math.floor(Math.random() * 5) : 0;
 
     const stats = {
       totalRevenue,
       totalVisitors: parseInt(visitors),
       conversionRate: parseFloat(conversionRate),
-      activeUsers,
+      activeUsers, // Valor real baseado em IPs online nos últimos 60s
       salesByDay,
       statusDistribution: [
          { status: 'Pago', count: paidCount, color: '#4ade80' },
          { status: 'Pendente', count: pendingCount, color: '#facc15' },
          { status: 'Falha', count: failedCount, color: '#ef4444' }
       ],
-      recentTransactions: transactions.slice(0, 10) // Retorna apenas as 10 últimas
+      recentTransactions: transactions.slice(0, 20)
     };
 
     res.status(200).json(stats);
 
   } catch (error) {
     console.error("Dashboard Stats Error:", error);
-    // Fallback vazio em caso de erro no Redis
-    res.status(500).json({
+    // Retorna JSON vazio em vez de erro 500 para não quebrar o frontend
+    res.status(200).json({
         totalRevenue: 0,
         totalVisitors: 0,
         conversionRate: 0,

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatHeader } from './ChatHeader';
 import { MessageBubble } from './MessageBubble';
@@ -34,19 +35,25 @@ export const ChatInterface: React.FC = () => {
     };
   }, []);
 
-  // REGISTRO DE VISITA (KV REDIS)
+  // REGISTRO DE VISITA + HEARTBEAT (Online Status)
   useEffect(() => {
+    // Conta visita 1 vez
     const registerVisit = async () => {
-        try {
-            await fetch('/api/visit');
-        } catch (e) {
-            console.warn("Falha ao registrar visita", e);
-        }
+        try { await fetch('/api/visit'); } catch (e) { console.warn("Erro visit", e); }
     };
     registerVisit();
+
+    // Mantém online a cada 15s
+    const heartbeat = async () => {
+        try { await fetch('/api/heartbeat'); } catch (e) { /* silent */ }
+    };
+    heartbeat(); // chama agora
+    const hbInterval = setInterval(heartbeat, 15000); // e repete
+
+    return () => clearInterval(hbInterval);
   }, []);
 
-  // GEOLOCALIZAÇÃO SILENCIOSA (VIA IP)
+  // GEOLOCALIZAÇÃO
   useEffect(() => {
     const fetchIPLocation = async () => {
       try {
