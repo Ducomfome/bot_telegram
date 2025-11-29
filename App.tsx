@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { ChatInterface } from './components/ChatInterface';
+import { OnlyFansProfile } from './components/OnlyFansProfile';
 import { Dashboard } from './components/Dashboard';
 
 export default function App() {
@@ -11,6 +12,6 @@ export default function App() {
     return <Dashboard />;
   }
 
-  // Rota padrão é o chat
-  return <ChatInterface />;
+  // Rota padrão agora é o Perfil OnlyFans
+  return <OnlyFansProfile />;
 }
