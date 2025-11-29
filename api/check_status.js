@@ -33,44 +33,46 @@ export default async function handler(req, res) {
     const token = authData.access_token;
 
     // 2. CONSULTA
-    // Menu "Transações" -> "Consulta status"
-    // Possíveis rotas:
-    const statusEndpoints = [
-      `/api/partner/v1/transactions/${id}`,
-      `/api/partner/v1/pix/cash-in/${id}`,
-      `/api/v1/transactions/${id}`
-    ];
+    // Tentativa na rota de criação passando ID (padrão REST comum)
+    const statusUrl = `${baseUrl}/api/partner/v1/cash-in/${id}`;
 
-    let statusData = null;
-
-    for (const endpoint of statusEndpoints) {
-      try {
-        const response = await fetch(`${baseUrl}${endpoint}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json'
-          }
-        });
-        
-        if (response.ok) {
-          statusData = await response.json();
-          break;
-        }
-      } catch (e) { /* ignore */ }
+    const response = await fetch(statusUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+       // Se falhar, tenta rota alternativa de transações genérica
+       const altResponse = await fetch(`${baseUrl}/api/partner/v1/transactions/${id}`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
+       });
+       if(altResponse.ok) {
+          const altData = await altResponse.json();
+          return processResponse(res, altData);
+       }
+       return res.status(200).json({ paid: false, error: 'Transaction lookup failed' });
     }
 
-    if (!statusData) {
-      return res.status(200).json({ paid: false, error: 'Transaction not found' });
-    }
-
-    // Normalização profunda
-    const dataRef = statusData.data || statusData;
-    const status = (dataRef.status || dataRef.state || 'UNKNOWN').toUpperCase();
-    const isPaid = ['PAID', 'COMPLETED', 'CONFIRMED', 'APPROVED', 'CONCLUIDA'].includes(status);
-
-    return res.status(200).json({ paid: isPaid, status: status });
+    const statusData = await response.json();
+    return processResponse(res, statusData);
 
   } catch (error) {
     return res.status(200).json({ paid: false, error: error.message });
   }
+}
+
+function processResponse(res, data) {
+    // Normalização profunda
+    // A API pode retornar o objeto direto ou dentro de 'data'
+    const dataRef = data.data || data;
+    
+    // Status comuns de gateways
+    const status = (dataRef.status || dataRef.state || 'UNKNOWN').toUpperCase();
+    
+    // Lista de status que consideramos "PAGO"
+    const isPaid = ['PAID', 'COMPLETED', 'CONFIRMED', 'APPROVED', 'CONCLUIDA', 'RECEIVABLE'].includes(status);
+
+    return res.status(200).json({ paid: isPaid, status: status });
 }

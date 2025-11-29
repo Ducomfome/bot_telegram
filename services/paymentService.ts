@@ -26,15 +26,17 @@ export const createPixTransaction = async (amount: number, description: string):
       throw new Error(data.error || "Erro desconhecido ao gerar Pix.");
     }
     
-    // Fallback de segurança se os campos vierem vazios
-    if (!data.copyPasteCode && !data.qrCodeBase64) {
-      console.warn("Payload Debug:", data); // Mostra o que veio da API para debug
-      throw new Error("A API conectou, mas não retornou o QR Code.");
+    // Validação ajustada para a API SyncPay
+    // A API retorna apenas 'pix_code' (copyPasteCode), sem imagem Base64.
+    // O Frontend gera a imagem visualmente usando react-qr-code.
+    if (!data.copyPasteCode) {
+      console.warn("Payload Debug:", data);
+      throw new Error("A API conectou, mas não retornou o código Pix.");
     }
 
     return {
       transactionId: data.transactionId,
-      qrCodeBase64: data.qrCodeBase64,
+      qrCodeBase64: data.qrCodeBase64 || '', // Pode vir vazio
       copyPasteCode: data.copyPasteCode
     };
 
