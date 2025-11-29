@@ -102,7 +102,6 @@ export default async function handler(req, res) {
     }
 
     // 3. SALVAR NO BANCO DE DADOS (Redis)
-    // Bloco try/catch isolado para garantir que o QR Code seja entregue mesmo se o banco falhar
     try {
         const timestamp = Date.now();
         const txRecord = {
@@ -110,21 +109,17 @@ export default async function handler(req, res) {
             amount: amount,
             status: 'pending',
             date: new Date().toLocaleDateString('pt-BR'),
-            timestamp: timestamp,
+            timestamp: timestamp, // Salva como número
             customerName: 'Cliente Anônimo',
             location: location ? `${location.city} - ${location.state}` : 'Desconhecido'
         };
 
-        // Salva os detalhes com expiração longa (30 dias) para não encher o banco
         await kv.hset(`tx:${txId}`, txRecord);
-        
-        // Salva na lista
         await kv.lpush('transactions_list', `tx:${txId}`);
         
         console.log(`[DB] Transação ${txId} salva com sucesso.`);
     } catch (dbError) {
         console.error("ERRO CRÍTICO AO SALVAR NO REDIS:", dbError);
-        // Não lançamos erro aqui para não impedir o usuário de pagar
     }
 
     return res.status(200).json({
