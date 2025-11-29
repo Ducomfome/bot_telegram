@@ -12,57 +12,68 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Buscar Visitantes (Total Histórico)
-    const visitors = await kv.get('site_visitors') || 0;
+    // Verificação de segurança: Se o banco não estiver conectado, não quebra o app
+    if (!process.env.KV_REST_API_URL) {
+        console.error("KV_REST_API_URL não definida. O banco não está conectado.");
+        return res.status(200).json(getEmptyStats());
+    }
 
-    // 2. Buscar Usuários Online (Heartbeats ativos)
-    // Keys não é o ideal para produção massiva, mas para dashboard admin funciona bem
+    // 1. Buscar Visitantes e Online
+    const visitors = await kv.get('site_visitors') || 0;
     const onlineKeys = await kv.keys('online:*');
     const activeUsers = onlineKeys.length;
 
-    // 3. Buscar Transações
-    // Tenta buscar da lista organizada primeiro
+    // 2. Buscar Transações (Estratégia Híbrida)
     let txKeys = await kv.lrange('transactions_list', 0, -1);
     
-    // Fallback: se a lista estiver vazia (legado), tenta buscar por padrão de chave
+    // Fallback: Se a lista estiver vazia, tenta escanear chaves tx:* (mais lento, mas garante dados antigos)
     if (!txKeys || txKeys.length === 0) {
+       console.log("Lista vazia, buscando chaves tx:* diretamente...");
        txKeys = await kv.keys('tx:*');
     }
 
     let transactions = [];
 
     if (txKeys && txKeys.length > 0) {
-        const pipeline = kv.pipeline();
-        // Garante que só chaves únicas sejam buscadas (remove duplicatas)
-        const uniqueKeys = [...new Set(txKeys)];
+        // Remove duplicatas e garante formato correto
+        const uniqueKeys = [...new Set(txKeys)].map(k => k.startsWith('tx:') ? k : `tx:${k}`);
         
+        // Pipeline para buscar tudo de uma vez (muito mais rápido)
+        const pipeline = kv.pipeline();
         uniqueKeys.forEach(key => pipeline.hgetall(key));
         const results = await pipeline.exec();
         
-        // FILTRAGEM CRÍTICA: Remove nulos para evitar Crash 500
-        transactions = results.filter(tx => tx !== null && tx.amount !== undefined);
+        // Filtra resultados nulos (chaves deletadas ou expiradas)
+        transactions = results.filter(tx => tx && tx.amount);
     }
 
-    // 4. Processar Estatísticas
+    console.log(`[Stats] Encontradas ${transactions.length} transações.`);
+
+    // 3. Calcular Métricas
     let totalRevenue = 0;
     let paidCount = 0;
     let pendingCount = 0;
     let failedCount = 0;
     const salesByDayMap = {};
 
-    // Ordenar: Mais recente primeiro
-    transactions.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    // Ordenar por data (mais recente primeiro)
+    transactions.sort((a, b) => {
+        const timeA = a.timestamp || 0;
+        const timeB = b.timestamp || 0;
+        return timeB - timeA;
+    });
 
     transactions.forEach(tx => {
         const amount = parseFloat(tx.amount || 0);
+        // Normaliza o status para lowercase para evitar erro de comparação
         const status = (tx.status || 'pending').toLowerCase();
         
-        if (status === 'paid') {
+        if (status === 'paid' || status === 'approved' || status === 'completed') {
             totalRevenue += amount;
             paidCount++;
             
-            // Agrupar vendas por dia
             if (tx.date) {
+                // Formato esperado DD/MM/AAAA
                 const dayParts = tx.date.split('/');
                 if (dayParts.length >= 2) {
                     const shortDate = `${dayParts[0]}/${dayParts[1]}`;
@@ -70,17 +81,18 @@ export default async function handler(req, res) {
                     salesByDayMap[shortDate] += amount;
                 }
             }
-        } else if (status === 'pending') {
-            pendingCount++;
-        } else {
+        } else if (status === 'failed' || status === 'canceled') {
             failedCount++;
+        } else {
+            pendingCount++;
         }
     });
 
+    // Formata gráfico de vendas
     const salesByDay = Object.keys(salesByDayMap).map(day => ({
         day,
         value: salesByDayMap[day]
-    })).slice(-7); 
+    })).slice(-7); // Últimos 7 dias com vendas
 
     const conversionRate = visitors > 0 ? ((paidCount / visitors) * 100).toFixed(1) : 0;
 
@@ -88,22 +100,27 @@ export default async function handler(req, res) {
       totalRevenue,
       totalVisitors: parseInt(visitors),
       conversionRate: parseFloat(conversionRate),
-      activeUsers, // Valor real baseado em IPs online nos últimos 60s
+      activeUsers, 
       salesByDay,
       statusDistribution: [
          { status: 'Pago', count: paidCount, color: '#4ade80' },
          { status: 'Pendente', count: pendingCount, color: '#facc15' },
          { status: 'Falha', count: failedCount, color: '#ef4444' }
       ],
-      recentTransactions: transactions.slice(0, 20)
+      recentTransactions: transactions.slice(0, 50) // Limite de 50 no dashboard
     };
 
     res.status(200).json(stats);
 
   } catch (error) {
     console.error("Dashboard Stats Error:", error);
-    // Retorna JSON vazio em vez de erro 500 para não quebrar o frontend
-    res.status(200).json({
+    // Retorna vazio para não travar o front
+    res.status(200).json(getEmptyStats());
+  }
+}
+
+function getEmptyStats() {
+    return {
         totalRevenue: 0,
         totalVisitors: 0,
         conversionRate: 0,
@@ -111,6 +128,5 @@ export default async function handler(req, res) {
         salesByDay: [],
         statusDistribution: [],
         recentTransactions: []
-    });
-  }
+    };
 }
