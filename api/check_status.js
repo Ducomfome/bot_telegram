@@ -21,12 +21,12 @@ export default async function handler(req, res) {
 
   const clientId = process.env.VITE_SYNC_PAY_CLIENT_ID;
   const clientSecret = process.env.VITE_SYNC_PAY_CLIENT_SECRET;
-  const baseUrl = process.env.VITE_SYNC_PAY_BASE_URL || 'https://api.syncpayments.com.br';
+  const rawBaseUrl = process.env.VITE_SYNC_PAY_BASE_URL || 'https://api.syncpayments.com.br';
+  const baseUrl = rawBaseUrl.replace(/\/$/, '');
 
   try {
-    // 1. Autenticação - CORRIGIDO
+    // 1. Autenticação (Repetindo lógica robusta)
     const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-    
     const params = new URLSearchParams();
     params.append('grant_type', 'client_credentials');
 
@@ -34,14 +34,15 @@ export default async function handler(req, res) {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${credentials}`,
-        'Content-Type': 'application/x-www-form-urlencoded'
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+        'User-Agent': 'BotTelegramIntegration/1.0'
       },
       body: params.toString()
     });
 
     if (!authResponse.ok) {
-      const errText = await authResponse.text();
-      throw new Error(`Auth Error: ${authResponse.status} - ${errText}`);
+      throw new Error(`Auth Error: ${authResponse.status}`);
     }
     
     const authData = await authResponse.json();
@@ -52,12 +53,13 @@ export default async function handler(req, res) {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'User-Agent': 'BotTelegramIntegration/1.0'
       }
     });
 
     if (!statusResponse.ok) {
-       // Se não encontrar, apenas retorna não pago para não quebrar o polling
        return res.status(200).json({ paid: false, error_check: 'Transaction not found or API error' });
     }
 
@@ -71,7 +73,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Check Status Error:', error);
-    // Retornamos 200 com paid: false para o frontend não parar de tentar (polling) se for um erro temporário de rede
     return res.status(200).json({ paid: false, error: error.message });
   }
 }
