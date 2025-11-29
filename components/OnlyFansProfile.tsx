@@ -2,9 +2,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PaymentModal } from './PaymentModal';
 import { Plan, PixPaymentData, PaymentStatus, UserLocation } from '../types';
-import { MEDIA_URLS, SALES_COPY, PLANS, SUCCESS_LINK } from '../constants';
+import { MEDIA_URLS, PLANS, SUCCESS_LINK } from '../constants';
 import { createPixTransaction, checkPaymentStatus } from '../services/paymentService';
-import { Verified, MapPin, Link as LinkIcon, Image as ImageIcon, Video, Lock, Heart, MessageCircle, Share2, MoreHorizontal, ArrowLeft, Star } from 'lucide-react';
+import { Verified, MapPin, Link as LinkIcon, Lock, Heart, MessageCircle, Share2, MoreHorizontal, ArrowLeft, Star, Search, Menu } from 'lucide-react';
 
 export const OnlyFansProfile: React.FC = () => {
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
@@ -18,10 +18,14 @@ export const OnlyFansProfile: React.FC = () => {
 
   const pollingRef = useRef<any>(null);
 
-  // --- LÓGICA DE BACKEND ---
+  // Cor Principal da Privacy (Laranja avermelhado)
+  const BRAND_COLOR = "bg-[#fe2c55]";
+  const TEXT_BRAND = "text-[#fe2c55]";
+  const BORDER_BRAND = "border-[#fe2c55]";
+
+  // --- LÓGICA DE BACKEND (Mantida Intacta) ---
   
   useEffect(() => {
-    // Registro de visita e Heartbeat
     const registerVisit = async () => { try { await fetch('/api/visit'); } catch (e) {} };
     registerVisit();
     const heartbeat = async () => { try { await fetch('/api/heartbeat'); } catch (e) {} };
@@ -31,7 +35,6 @@ export const OnlyFansProfile: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Geolocalização
     const fetchIPLocation = async () => {
       try {
         const res = await fetch('https://ipwho.is/');
@@ -51,7 +54,6 @@ export const OnlyFansProfile: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Polling de Pagamento
     if (paymentStatus === 'pending' && pixData?.transactionId) {
       pollingRef.current = setInterval(async () => {
         const paid = await checkPaymentStatus(pixData.transactionId);
@@ -71,7 +73,7 @@ export const OnlyFansProfile: React.FC = () => {
     setPaymentStatus('loading');
     
     try {
-      const data = await createPixTransaction(plan.price, `Assinatura OF - ${plan.name}`, userLocation);
+      const data = await createPixTransaction(plan.price, `Privacy - ${plan.name}`, userLocation);
       setPixData(data);
       setPaymentStatus('pending');
     } catch (error) {
@@ -92,15 +94,15 @@ export const OnlyFansProfile: React.FC = () => {
 
   if (isAccessGranted) {
     return (
-      <div className="h-full overflow-y-auto bg-white flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mb-6 animate-bounce">
+      <div className="h-full overflow-y-auto bg-white flex flex-col items-center justify-center p-6 text-center font-sans">
+        <div className={`w-20 h-20 ${BRAND_COLOR} rounded-full flex items-center justify-center mb-6 animate-bounce`}>
             <Verified className="w-10 h-10 text-white" />
         </div>
         <h1 className="text-2xl font-bold text-gray-800 mb-2">Assinatura Confirmada!</h1>
-        <p className="text-gray-600 mb-8">Bem-vindo ao meu conteúdo exclusivo.</p>
+        <p className="text-gray-600 mb-8">Bem-vindo ao meu Privacy exclusivo.</p>
         <a 
           href={SUCCESS_LINK}
-          className="bg-[#00aff0] text-white px-8 py-4 rounded-full font-bold text-lg shadow-lg hover:bg-[#008ccf] transition-all transform hover:scale-105"
+          className={`${BRAND_COLOR} text-white px-8 py-4 rounded-full font-bold text-lg shadow-lg hover:brightness-110 transition-all transform hover:scale-105`}
         >
           ACESSAR CONTEÚDO AGORA
         </a>
@@ -109,152 +111,178 @@ export const OnlyFansProfile: React.FC = () => {
   }
 
   return (
-    // FIX: h-full e overflow-y-auto permitem scroll mesmo com body hidden
-    <div className="h-full overflow-y-auto bg-gray-100 font-sans">
+    <div className="h-full overflow-y-auto bg-[#f5f5f5] font-sans text-gray-900">
       <div className="max-w-md mx-auto bg-white min-h-screen shadow-xl overflow-hidden relative pb-20">
         
-        {/* Header Fixo */}
-        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm px-4 py-3 flex items-center gap-4 border-b border-gray-100">
-          <ArrowLeft className="w-6 h-6 text-gray-700 cursor-pointer" />
-          <div className="flex flex-col">
-             <h1 className="font-bold text-lg leading-none flex items-center gap-1">
-               Safadinha <Verified className="w-4 h-4 text-[#00aff0] fill-current" />
-             </h1>
-             <span className="text-xs text-gray-500">18.4K posts</span>
+        {/* Navbar estilo Privacy */}
+        <div className="sticky top-0 z-30 bg-white px-4 h-14 flex items-center justify-between border-b border-gray-100 shadow-sm">
+          <div className="flex items-center gap-3">
+             <Menu className="w-6 h-6 text-gray-700" />
+             <span className="font-bold text-2xl tracking-tighter text-[#fe2c55]">PRIVACY</span>
           </div>
-          <MoreHorizontal className="w-6 h-6 text-gray-700 ml-auto cursor-pointer" />
+          <div className="flex items-center gap-4">
+             <Search className="w-5 h-5 text-gray-600" />
+             <div className="w-8 h-8 bg-gray-200 rounded-full overflow-hidden border border-gray-300">
+                <img src="https://ui-avatars.com/api/?name=User&background=random" alt="User" />
+             </div>
+          </div>
         </div>
 
         {/* Banner */}
-        <div className="h-48 bg-gray-300 relative">
-          <img src={MEDIA_URLS.IMG_1} className="w-full h-full object-cover opacity-90" alt="Banner" />
+        <div className="h-40 sm:h-48 bg-gray-800 relative group cursor-pointer">
+          <img src={MEDIA_URLS.IMG_1} className="w-full h-full object-cover opacity-80" alt="Banner" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
         </div>
 
         {/* Info Profile */}
-        <div className="px-4 pb-4 relative">
-          <div className="relative -mt-10 mb-3 flex justify-between items-end">
-            <div className="w-24 h-24 rounded-full border-4 border-white overflow-hidden bg-gray-200">
+        <div className="px-5 relative">
+          {/* Foto de Perfil sobreposta */}
+          <div className="flex justify-between items-end -mt-10 mb-3">
+            <div className="w-24 h-24 rounded-full border-4 border-white overflow-hidden bg-gray-200 shadow-md z-10">
               <img src={MEDIA_URLS.PROFILE_PIC} className="w-full h-full object-cover" alt="Profile" />
             </div>
-            <div className="flex gap-2 mb-2">
-                <button className="p-2 border border-gray-300 rounded-full text-gray-600 hover:bg-gray-50 transition-colors">
+            <div className="flex gap-2 mb-1">
+                <button className="p-2 border border-gray-200 rounded-full text-gray-600 hover:bg-gray-50 transition-colors shadow-sm">
                     <MessageCircle className="w-5 h-5" />
                 </button>
-                <button className="p-2 border border-gray-300 rounded-full text-gray-600 hover:bg-gray-50 transition-colors">
-                    <Star className="w-5 h-5" />
+                <button className="p-2 border border-gray-200 rounded-full text-gray-600 hover:bg-gray-50 transition-colors shadow-sm">
+                    <Share2 className="w-5 h-5" />
+                </button>
+                <button className="p-2 border border-gray-200 rounded-full text-gray-600 hover:bg-gray-50 transition-colors shadow-sm">
+                    <MoreHorizontal className="w-5 h-5" />
                 </button>
             </div>
           </div>
           
-          <div className="mb-4">
-             <h2 className="text-xl font-bold flex items-center gap-1 text-gray-900">
-               Safadinha 😈 <Verified className="w-5 h-5 text-[#00aff0]" />
+          <div className="mb-2">
+             <h2 className="text-xl font-bold flex items-center gap-1 text-gray-900 leading-tight">
+               Safadinha 😈 <Verified className={`w-5 h-5 ${TEXT_BRAND} fill-current`} />
              </h2>
              <span className="text-gray-500 text-sm">@safadinha_vip</span>
           </div>
 
-          <div className="text-sm text-gray-700 space-y-2 mb-4">
+          <div className="text-sm text-gray-600 leading-relaxed mb-4">
             <p>✨ 20 aninhos | 1.60m | 48kg</p>
             <p>Vem ver o que eu faço quando estou sozinha no quarto... 🔞</p>
-            <p className="font-medium text-[#00aff0]">👇 CONTEÚDO LIBERADO NO LINK ABAIXO</p>
+            <p className={`font-bold ${TEXT_BRAND} mt-1`}>👇 VÍDEOS COMPLETOS ABAIXO</p>
           </div>
 
-          <div className="flex gap-4 text-xs text-gray-500 mb-6">
-             <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> São Paulo, Brasil</span>
-             <span className="flex items-center gap-1"><LinkIcon className="w-3 h-3" /> privacy.com.br/safada</span>
-          </div>
-
-          {/* Cards de Assinatura */}
-          <div className="space-y-3">
-             <div className="border border-[#00aff0] bg-[#f2faff] p-4 rounded-xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 bg-[#00aff0] text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">
-                    MAIS VENDIDO
+          {/* Cards de Assinatura Estilo Privacy */}
+          <div className="space-y-3 mb-6">
+             <div className="border border-[#fe2c55]/30 bg-[#fff5f6] p-4 rounded-xl relative overflow-hidden shadow-sm">
+                <div className={`absolute top-0 right-0 ${BRAND_COLOR} text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg`}>
+                    MAIS POPULAR
                 </div>
-                <h3 className="font-bold text-gray-700 mb-1">ACESSO MENSAL</h3>
-                <p className="text-xs text-gray-500 mb-3">Acesso completo a todas as fotos e vídeos + Grupo VIP.</p>
+                <h3 className="font-bold text-gray-800 text-sm mb-1">MENSAL</h3>
+                <div className="flex items-baseline gap-1 mb-3">
+                   <span className={`text-2xl font-black ${TEXT_BRAND}`}>R$ 11,99</span>
+                   <span className="text-xs text-gray-500">/ mês</span>
+                </div>
                 <button 
                    onClick={() => handleSubscribe('monthly')}
-                   className="w-full bg-[#00aff0] hover:bg-[#008ccf] text-white font-bold py-2.5 rounded-full flex items-center justify-center gap-2 transition-all active:scale-95"
+                   className={`w-full ${BRAND_COLOR} hover:brightness-110 text-white font-bold py-3 rounded-full flex items-center justify-center gap-2 transition-all shadow-md active:scale-95`}
                 >
-                   ASSINAR POR R$ 11,99
+                   ASSINAR AGORA
                 </button>
              </div>
 
-             <div className="border border-gray-200 p-4 rounded-xl">
-                <h3 className="font-bold text-gray-700 mb-1">ACESSO VITALÍCIO ♾️</h3>
-                <p className="text-xs text-gray-500 mb-3">Pague uma vez e tenha acesso para sempre.</p>
+             <div className="border border-gray-200 p-4 rounded-xl shadow-sm hover:border-gray-300 transition-colors">
+                <h3 className="font-bold text-gray-800 text-sm mb-1">VITALÍCIO (SEM MENSALIDADE)</h3>
+                 <div className="flex items-baseline gap-1 mb-3">
+                   <span className="text-2xl font-black text-gray-800">R$ 14,99</span>
+                   <span className="text-xs text-gray-500">/ único</span>
+                </div>
                 <button 
                    onClick={() => handleSubscribe('lifetime')}
-                   className="w-full border border-[#00aff0] text-[#00aff0] font-bold py-2.5 rounded-full flex items-center justify-center gap-2 hover:bg-[#f2faff] transition-all"
+                   className={`w-full border-2 ${BORDER_BRAND} ${TEXT_BRAND} font-bold py-2.5 rounded-full flex items-center justify-center gap-2 hover:bg-[#fff5f6] transition-all`}
                 >
-                   ASSINAR POR R$ 14,99
+                   COMPRAR ACESSO TOTAL
                 </button>
              </div>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-gray-200 mt-2 sticky top-[60px] bg-white z-10">
+        {/* Tabs Estilo Privacy */}
+        <div className="flex border-b border-gray-200 sticky top-14 bg-white z-20">
             <button 
                 onClick={() => setActiveTab('posts')}
-                className={`flex-1 py-3 text-sm font-bold border-b-2 transition-colors flex flex-col items-center ${activeTab === 'posts' ? 'border-[#00aff0] text-[#00aff0]' : 'border-transparent text-gray-500'}`}
+                className={`flex-1 py-3 text-sm font-bold border-b-[3px] transition-colors ${activeTab === 'posts' ? `${BORDER_BRAND} ${TEXT_BRAND}` : 'border-transparent text-gray-400'}`}
             >
-                <span className="text-xs uppercase">184 Posts</span>
+                POSTS (184)
             </button>
             <button 
                 onClick={() => setActiveTab('media')}
-                className={`flex-1 py-3 text-sm font-bold border-b-2 transition-colors flex flex-col items-center ${activeTab === 'media' ? 'border-[#00aff0] text-[#00aff0]' : 'border-transparent text-gray-500'}`}
+                className={`flex-1 py-3 text-sm font-bold border-b-[3px] transition-colors ${activeTab === 'media' ? `${BORDER_BRAND} ${TEXT_BRAND}` : 'border-transparent text-gray-400'}`}
             >
-                <span className="text-xs uppercase">84 Mídias</span>
+                MÍDIAS (84)
             </button>
         </div>
 
-        {/* Feed de Posts Bloqueados */}
-        <div className="bg-gray-100 min-h-[500px] py-2 space-y-2">
+        {/* Feed de Posts */}
+        <div className="bg-[#f0f2f5] min-h-[500px] py-3 space-y-3">
             {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="bg-white p-4 pb-0">
+                <div key={i} className="bg-white p-4 shadow-sm border-y border-gray-100 sm:border sm:rounded-lg sm:mx-2">
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                            <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
+                            <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden border border-gray-100">
                                 <img src={MEDIA_URLS.PROFILE_PIC} className="w-full h-full object-cover" />
                             </div>
                             <div>
-                                <h4 className="font-bold text-sm text-gray-900">Safadinha 😈</h4>
-                                <span className="text-xs text-gray-400">Há {i} horas</span>
+                                <h4 className="font-bold text-sm text-gray-900 flex items-center gap-1">
+                                    Safadinha 😈 <Verified className={`w-3 h-3 ${TEXT_BRAND}`} />
+                                </h4>
+                                <span className="text-xs text-gray-400">Há {i} horas • Público</span>
                             </div>
                         </div>
                         <MoreHorizontal className="w-5 h-5 text-gray-400 cursor-pointer" />
                     </div>
-                    <p className="text-sm text-gray-700 mb-3">
-                        Hoje eu acordei com uma vontade de fazer aquilo... quem quer ver o vídeo completo? 🙈🔥
+                    <p className="text-sm text-gray-800 mb-3 font-normal">
+                        Uma prévia do que postei no VIP hoje... quem assinar vai ver tudo sem censura! 🔥👀
                     </p>
                     
-                    {/* Conteúdo Bloqueado */}
+                    {/* Conteúdo Bloqueado Estilo Privacy */}
                     <div 
                         onClick={() => handleSubscribe('monthly')}
-                        className="relative w-full aspect-[4/5] bg-gray-800 rounded-lg overflow-hidden cursor-pointer group"
+                        className="relative w-full aspect-[3/4] bg-gray-900 rounded-lg overflow-hidden cursor-pointer group"
                     >
                         <img 
                             src={i % 2 === 0 ? MEDIA_URLS.IMG_1 : MEDIA_URLS.IMG_2} 
-                            className="w-full h-full object-cover opacity-30 blur-xl scale-110 transition-transform duration-700" 
+                            className="w-full h-full object-cover opacity-20 blur-2xl scale-105 transition-transform duration-700" 
                         />
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-                            <div className="bg-[#00aff0] p-4 rounded-full mb-3 shadow-lg group-hover:scale-110 transition-transform">
-                                <Lock className="w-8 h-8 text-white" />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-4 text-center">
+                            <div className={`w-14 h-14 ${BRAND_COLOR} rounded-full flex items-center justify-center mb-3 shadow-lg group-hover:scale-110 transition-transform`}>
+                                <Lock className="w-7 h-7 text-white" />
                             </div>
-                            <h3 className="font-bold text-lg drop-shadow-md">Assine para ver</h3>
+                            <h3 className="font-bold text-lg uppercase tracking-wide">Conteúdo Exclusivo</h3>
+                            <p className="text-xs text-gray-300 mt-1 max-w-[200px]">
+                                Assine este perfil para desbloquear essa mídia e todo o arquivo.
+                            </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between py-3 mt-2 text-gray-500 border-t border-gray-100">
+                    <div className="flex items-center justify-between pt-3 mt-2 text-gray-500">
                         <div className="flex gap-4">
-                            <Heart className="w-6 h-6 hover:text-red-500 cursor-pointer" />
-                            <MessageCircle className="w-6 h-6 hover:text-blue-500 cursor-pointer" />
+                            <div className="flex items-center gap-1 cursor-pointer hover:text-[#fe2c55]">
+                                <Heart className="w-6 h-6" />
+                                <span className="text-xs font-bold">2.4K</span>
+                            </div>
+                            <div className="flex items-center gap-1 cursor-pointer hover:text-gray-800">
+                                <MessageCircle className="w-6 h-6" />
+                                <span className="text-xs font-bold">142</span>
+                            </div>
                         </div>
-                        <Share2 className="w-6 h-6 hover:text-gray-700 cursor-pointer" />
+                        <div className="flex items-center gap-1 cursor-pointer hover:text-[#fe2c55]">
+                            <DollarSignIcon className="w-6 h-6" />
+                            <span className="text-xs font-bold">TIPS</span>
+                        </div>
                     </div>
                 </div>
             ))}
+            
+            <div className="text-center py-8 text-gray-400 text-sm">
+                <Lock className="w-6 h-6 mx-auto mb-2 opacity-50" />
+                <p>Você chegou ao fim dos posts públicos.</p>
+            </div>
         </div>
 
         {/* Modal de Pagamento */}
@@ -275,3 +303,7 @@ export const OnlyFansProfile: React.FC = () => {
     </div>
   );
 };
+
+const DollarSignIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="12" x2="12" y1="1" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+);
