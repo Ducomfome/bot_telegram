@@ -17,6 +17,9 @@ export const OnlyFansProfile: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'posts' | 'media'>('posts');
 
   const pollingRef = useRef<any>(null);
+  
+  // Referência para a seção de planos (Scroll)
+  const plansRef = useRef<HTMLDivElement>(null);
 
   // Cor Principal da Privacy (Laranja avermelhado)
   const BRAND_COLOR = "bg-[#fe2c55]";
@@ -92,6 +95,12 @@ export const OnlyFansProfile: React.FC = () => {
     if (pollingRef.current) clearInterval(pollingRef.current);
   };
 
+  const scrollToPlans = () => {
+    if (plansRef.current) {
+      plansRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
   if (isAccessGranted) {
     return (
       <div className="h-full overflow-y-auto bg-white flex flex-col items-center justify-center p-6 text-center font-sans">
@@ -111,7 +120,7 @@ export const OnlyFansProfile: React.FC = () => {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-[#f5f5f5] font-sans text-gray-900">
+    <div className="h-full overflow-y-auto bg-[#f5f5f5] font-sans text-gray-900 scroll-smooth">
       <div className="max-w-md mx-auto bg-white min-h-screen shadow-xl overflow-hidden relative pb-20">
         
         {/* Navbar estilo Privacy */}
@@ -168,7 +177,7 @@ export const OnlyFansProfile: React.FC = () => {
           </div>
 
           {/* Cards de Assinatura Estilo Privacy */}
-          <div className="space-y-3 mb-6">
+          <div ref={plansRef} className="space-y-3 mb-6 scroll-mt-20">
              {/* Plano Mensal */}
              <div className="border border-[#fe2c55]/30 bg-[#fff5f6] p-4 rounded-xl relative overflow-hidden shadow-sm">
                 <div className={`absolute top-0 right-0 ${BRAND_COLOR} text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg`}>
@@ -270,7 +279,7 @@ export const OnlyFansProfile: React.FC = () => {
                     
                     {/* Conteúdo Bloqueado Estilo Privacy */}
                     <div 
-                        onClick={() => handleSubscribe('monthly')}
+                        onClick={scrollToPlans}
                         className="relative w-full aspect-[3/4] bg-gray-900 rounded-lg overflow-hidden cursor-pointer group"
                     >
                         <img 
