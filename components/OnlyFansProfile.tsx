@@ -18,7 +18,7 @@ export const OnlyFansProfile: React.FC = () => {
 
   const pollingRef = useRef<any>(null);
 
-  // --- LÓGICA DE BACKEND (Igual ao Chat) ---
+  // --- LÓGICA DE BACKEND ---
   
   useEffect(() => {
     // Registro de visita e Heartbeat
@@ -88,12 +88,11 @@ export const OnlyFansProfile: React.FC = () => {
     setSelectedPlan(null);
     setIsAccessGranted(true);
     if (pollingRef.current) clearInterval(pollingRef.current);
-    // Redirecionamento ou exibição de sucesso
   };
 
   if (isAccessGranted) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
+      <div className="h-full overflow-y-auto bg-white flex flex-col items-center justify-center p-6 text-center">
         <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mb-6 animate-bounce">
             <Verified className="w-10 h-10 text-white" />
         </div>
@@ -110,19 +109,20 @@ export const OnlyFansProfile: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 pb-20 font-sans">
-      <div className="max-w-md mx-auto bg-white min-h-screen shadow-xl overflow-hidden relative">
+    // FIX: h-full e overflow-y-auto permitem scroll mesmo com body hidden
+    <div className="h-full overflow-y-auto bg-gray-100 font-sans">
+      <div className="max-w-md mx-auto bg-white min-h-screen shadow-xl overflow-hidden relative pb-20">
         
         {/* Header Fixo */}
         <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm px-4 py-3 flex items-center gap-4 border-b border-gray-100">
-          <ArrowLeft className="w-6 h-6 text-gray-700" />
+          <ArrowLeft className="w-6 h-6 text-gray-700 cursor-pointer" />
           <div className="flex flex-col">
              <h1 className="font-bold text-lg leading-none flex items-center gap-1">
                Safadinha <Verified className="w-4 h-4 text-[#00aff0] fill-current" />
              </h1>
              <span className="text-xs text-gray-500">18.4K posts</span>
           </div>
-          <MoreHorizontal className="w-6 h-6 text-gray-700 ml-auto" />
+          <MoreHorizontal className="w-6 h-6 text-gray-700 ml-auto cursor-pointer" />
         </div>
 
         {/* Banner */}
@@ -137,10 +137,10 @@ export const OnlyFansProfile: React.FC = () => {
               <img src={MEDIA_URLS.PROFILE_PIC} className="w-full h-full object-cover" alt="Profile" />
             </div>
             <div className="flex gap-2 mb-2">
-                <button className="p-2 border border-gray-300 rounded-full text-gray-600 hover:bg-gray-50">
+                <button className="p-2 border border-gray-300 rounded-full text-gray-600 hover:bg-gray-50 transition-colors">
                     <MessageCircle className="w-5 h-5" />
                 </button>
-                <button className="p-2 border border-gray-300 rounded-full text-gray-600 hover:bg-gray-50">
+                <button className="p-2 border border-gray-300 rounded-full text-gray-600 hover:bg-gray-50 transition-colors">
                     <Star className="w-5 h-5" />
                 </button>
             </div>
@@ -194,7 +194,7 @@ export const OnlyFansProfile: React.FC = () => {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-200 mt-2">
+        <div className="flex border-b border-gray-200 mt-2 sticky top-[60px] bg-white z-10">
             <button 
                 onClick={() => setActiveTab('posts')}
                 className={`flex-1 py-3 text-sm font-bold border-b-2 transition-colors flex flex-col items-center ${activeTab === 'posts' ? 'border-[#00aff0] text-[#00aff0]' : 'border-transparent text-gray-500'}`}
@@ -223,7 +223,7 @@ export const OnlyFansProfile: React.FC = () => {
                                 <span className="text-xs text-gray-400">Há {i} horas</span>
                             </div>
                         </div>
-                        <MoreHorizontal className="w-5 h-5 text-gray-400" />
+                        <MoreHorizontal className="w-5 h-5 text-gray-400 cursor-pointer" />
                     </div>
                     <p className="text-sm text-gray-700 mb-3">
                         Hoje eu acordei com uma vontade de fazer aquilo... quem quer ver o vídeo completo? 🙈🔥
@@ -236,7 +236,7 @@ export const OnlyFansProfile: React.FC = () => {
                     >
                         <img 
                             src={i % 2 === 0 ? MEDIA_URLS.IMG_1 : MEDIA_URLS.IMG_2} 
-                            className="w-full h-full object-cover opacity-30 blur-xl scale-110" 
+                            className="w-full h-full object-cover opacity-30 blur-xl scale-110 transition-transform duration-700" 
                         />
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
                             <div className="bg-[#00aff0] p-4 rounded-full mb-3 shadow-lg group-hover:scale-110 transition-transform">
