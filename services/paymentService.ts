@@ -1,4 +1,3 @@
-
 import { PixPaymentData } from '../types';
 
 export const createPixTransaction = async (amount: number, description: string): Promise<PixPaymentData> => {
@@ -12,21 +11,20 @@ export const createPixTransaction = async (amount: number, description: string):
       body: JSON.stringify({ amount, description })
     });
 
-    // Check content type to parse appropriately
     const contentType = response.headers.get("content-type");
     let data;
 
     if (contentType && contentType.indexOf("application/json") !== -1) {
       data = await response.json();
     } else {
-      // If it's not JSON (likely an error page), get text to debug but throw standard error
       const text = await response.text();
-      console.error("Non-JSON response from API:", text);
-      throw new Error(`Erro no servidor (Status ${response.status}). Verifique o console.`);
+      console.error("Erro Crítico API (HTML/Text):", text);
+      throw new Error(`Erro no servidor de pagamento. Tente novamente mais tarde.`);
     }
 
     if (!response.ok) {
-      throw new Error(data.error || `Erro na API: ${response.status}`);
+      // Tenta extrair mensagem de erro amigável se a API local repassou
+      throw new Error(data.error || `Erro ao gerar Pix.`);
     }
     
     if (!data.copyPasteCode && !data.qrCodeBase64) {
@@ -40,9 +38,8 @@ export const createPixTransaction = async (amount: number, description: string):
     };
 
   } catch (error: any) {
-    console.error("Erro ao criar Pix:", error);
-    // Return explicit error message to UI
-    throw new Error(error.message || "Falha na comunicação com o pagamento.");
+    console.error("Erro Service Pix:", error);
+    throw error;
   }
 };
 

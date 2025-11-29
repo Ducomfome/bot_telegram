@@ -1,4 +1,3 @@
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -24,50 +23,75 @@ export default async function handler(req, res) {
   const rawBaseUrl = process.env.VITE_SYNC_PAY_BASE_URL || 'https://api.syncpayments.com.br';
   const baseUrl = rawBaseUrl.replace(/\/$/, '');
 
-  try {
-    // 1. Autenticação (Repetindo lógica robusta)
-    const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-    const params = new URLSearchParams();
-    params.append('grant_type', 'client_credentials');
-
-    const authResponse = await fetch(`${baseUrl}/oauth/token`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${credentials}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
-        'User-Agent': 'BotTelegramIntegration/1.0'
-      },
-      body: params.toString()
-    });
-
-    if (!authResponse.ok) {
-      throw new Error(`Auth Error: ${authResponse.status}`);
+  // Helper para tentar múltiplas URLs (Mesma lógica do create_pix)
+  async function tryEndpoints(endpoints, options, context) {
+    let lastError = null;
+    for (const endpoint of endpoints) {
+      const url = `${baseUrl}${endpoint}`;
+      try {
+        const response = await fetch(url, options);
+        if (response.status === 404) {
+          lastError = `Rota não encontrada: ${endpoint}`;
+          continue;
+        }
+        return response;
+      } catch (err) {
+        lastError = err.message;
+      }
     }
+    throw new Error(`Falha em todas rotas de ${context}`);
+  }
+
+  try {
+    // 1. Autenticação (Fallback)
+    const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    const authParams = new URLSearchParams();
+    authParams.append('grant_type', 'client_credentials');
+
+    const authResponse = await tryEndpoints(
+      ['/oauth/token', '/api/oauth/token'],
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${credentials}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+          'User-Agent': 'BotTelegramIntegration/1.0'
+        },
+        body: authParams.toString()
+      },
+      'AUTH'
+    );
+
+    if (!authResponse.ok) throw new Error('Auth Failed');
     
     const authData = await authResponse.json();
     const token = authData.access_token;
 
-    // 2. Consulta Status
-    const statusResponse = await fetch(`${baseUrl}/v1/transactions/${id}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'User-Agent': 'BotTelegramIntegration/1.0'
-      }
-    });
+    // 2. Consulta Status (Fallback)
+    const statusResponse = await tryEndpoints(
+      [`/v1/transactions/${id}`, `/api/v1/transactions/${id}`, `/v1/pix/charges/${id}`, `/api/v1/pix/charges/${id}`],
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'BotTelegramIntegration/1.0'
+        }
+      },
+      'CHECK_STATUS'
+    );
 
     if (!statusResponse.ok) {
-       return res.status(200).json({ paid: false, error_check: 'Transaction not found or API error' });
+       return res.status(200).json({ paid: false, error_check: 'Transaction check failed' });
     }
 
     const statusData = await statusResponse.json();
-    const status = statusData.status ? statusData.status.toUpperCase() : 'UNKNOWN';
+    // Normalização de status
+    const status = (statusData.status || statusData.state || 'UNKNOWN').toUpperCase();
 
-    // Lista de status considerados "PAGO"
-    const isPaid = ['PAID', 'COMPLETED', 'CONFIRMED', 'APPROVED', 'SETTLED'].includes(status);
+    const isPaid = ['PAID', 'COMPLETED', 'CONFIRMED', 'APPROVED', 'SETTLED', 'CONCLUIDA'].includes(status);
 
     return res.status(200).json({ paid: isPaid, status: status });
 
