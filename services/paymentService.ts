@@ -1,8 +1,8 @@
+
 import { PixPaymentData } from '../types';
 
 export const createPixTransaction = async (amount: number, description: string): Promise<PixPaymentData> => {
   try {
-    // Calling the local Vercel API function
     const response = await fetch('/api/create_pix', {
       method: 'POST',
       headers: {
@@ -18,17 +18,18 @@ export const createPixTransaction = async (amount: number, description: string):
       data = await response.json();
     } else {
       const text = await response.text();
-      console.error("Erro Crítico API (HTML/Text):", text);
-      throw new Error(`Erro no servidor de pagamento. Tente novamente mais tarde.`);
+      console.error("Erro Crítico (HTML Retornado):", text);
+      throw new Error("Erro de comunicação com o servidor de pagamento.");
     }
 
     if (!response.ok) {
-      // Tenta extrair mensagem de erro amigável se a API local repassou
-      throw new Error(data.error || `Erro ao gerar Pix.`);
+      throw new Error(data.error || "Erro desconhecido ao gerar Pix.");
     }
     
+    // Fallback de segurança se os campos vierem vazios
     if (!data.copyPasteCode && !data.qrCodeBase64) {
-      throw new Error("A API não retornou o código Pix. Tente novamente.");
+      console.warn("Payload Debug:", data); // Mostra o que veio da API para debug
+      throw new Error("A API conectou, mas não retornou o QR Code.");
     }
 
     return {
@@ -38,7 +39,7 @@ export const createPixTransaction = async (amount: number, description: string):
     };
 
   } catch (error: any) {
-    console.error("Erro Service Pix:", error);
+    console.error("Service Pix Error:", error);
     throw error;
   }
 };
@@ -54,7 +55,7 @@ export const checkPaymentStatus = async (transactionId: string): Promise<boolean
       return data.paid === true;
     }
   } catch (error) {
-    console.error("Erro ao verificar status:", error);
+    console.error("Status Check Error:", error);
   }
   
   return false;
